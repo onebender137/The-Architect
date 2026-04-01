@@ -11,11 +11,12 @@ from logging.handlers import RotatingFileHandler
 from collections import deque
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from ollama import AsyncClient
 from dotenv import load_dotenv
 
 # --- CONFIGURATION ---
-load_dotenv() # This loads the variables from .env
+load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 MODEL_NAME = "qwen2.5:7b-instruct-q4_0" 
 OLLAMA_URL = "http://172.25.64.1:11434" 
@@ -24,29 +25,37 @@ SKILLS_DIR = os.path.join(os.getcwd(), "skills")
 if not os.path.exists(SKILLS_DIR):
     os.makedirs(SKILLS_DIR)
 
-# --- SYSTEM PROMPT (The Senior Architect) ---
-SYSTEM_PROMPT_BASE = (
-    "You are 'The Architect', an Elite Senior Software Engineer and Mentor.\n"
-    "STRICT RULES:\n"
-    "1. LANGUAGE: Respond ONLY in English. Never use Chinese or any other language.\n"
-    "2. THINK FIRST: Analyze logic, safety, and edge cases before providing code.\n"
-    "3. SAFETY: Audit all bash commands for destructive flags (rm -rf, etc).\n"
-    "4. MENTORSHIP: Explain complex concepts in simple terms for the user.\n\n"
-    "RESPONSE FORMAT:\n"
-    "🧠 **Architectural Plan** | 💻 **Implementation** | 🧪 **Verification** | 🎓 **The Lesson**"
+# --- LOGGING ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[RotatingFileHandler("architect.log", maxBytes=5000000, backupCount=5)]
 )
 
-# --- LOGGING SETUP ---
-log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-rotating_handler = RotatingFileHandler("architect.log", maxBytes=5*1024*1024, backupCount=3)
-rotating_handler.setFormatter(log_formatter)
-logging.basicConfig(level=logging.INFO, handlers=[rotating_handler, logging.StreamHandler()])
+# --- SYSTEM PROMPTS ---
+SYSTEM_PROMPT_BASE = (
+    "You are 'The Architect', an Elite Senior Software Engineer.\n"
+    "Your goal is to build robust, secure, and efficient solutions on an MSI Claw (Intel Arc).\n"
+    "Respond ONLY in English. Explain logic clearly. Audit all bash for safety.\n"
+    "When providing Python code to be executed, ensure it is self-contained."
+)
+
+SELF_HEAL_PROMPT = (
+    "The previous Python code failed with the following error. "
+    "Analyze the traceback, identify the root cause, and provide a corrected, full implementation.\n\n"
+    "Error:\n{error}"
+)
 
 # --- INITIALIZATION ---
+if not TOKEN:
+    logging.error("BOT_TOKEN missing from .env file!")
+    sys.exit(1)
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 client = AsyncClient(host=OLLAMA_URL)
 user_history = {}
+pending_skills = {} # Temporary storage for skills awaiting approval
 
 def get_context(user_id):
     if user_id not in user_history:
@@ -64,8 +73,10 @@ class SkillManager:
     async def install_skill(name: str, content: str):
         slug = re.sub(r'[^a-z0-9-]', '', name.lower().replace(" ", "-"))
         path = os.path.join(SKILLS_DIR, slug)
-        if os.path.exists(path): return False, f"Skill `{slug}` already exists."
-        os.makedirs(path)
+        if os.path.exists(path):
+            return False, f"Skill `{slug}` already exists."
+
+        os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write(content)
         return True, slug
@@ -80,204 +91,217 @@ class SkillManager:
         return match.group(1).strip() if match else None
 
     @staticmethod
-    def get_skills_summary():
-        """Generates a summary of all installed skills for the LLM prompt."""
-        skills = SkillManager.list_skills()
-        if not skills:
-            return "No custom skills currently installed."
-        
-        summary = "YOU HAVE THE FOLLOWING SKILLS INSTALLED:\n"
-        for slug in skills:
-            path = os.path.join(SKILLS_DIR, slug, "SKILL.md")
-            # Try to grab a description from the SKILL.md
-            desc = "No description provided."
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    # Look for first paragraph or a specific 'Description' section
-                    match = re.search(r"## Description\n(.*?)\n", content, re.S)
-                    if match:
-                        desc = match.group(1).strip()
-            except:
-                pass
-            summary += f"- `{slug}`: {desc}\n"
-        summary += "\nTo use a skill, instruct the user to run `/run_skill [slug]`."
-        return summary
+    def remove_skill(slug: str):
+        path = os.path.join(SKILLS_DIR, slug)
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            return True
+        return False
 
 # --- EXECUTION ENGINES ---
-def run_sandboxed_python(raw_input: str):
-    code = raw_input
-    if "```python" in raw_input:
-        match = re.search(r"```python\n(.*?)\n```", raw_input, re.DOTALL)
-        if match: code = match.group(1)
-    
+async def run_sandboxed_python(code: str):
+    """Executes Python code in a temporary directory with a timeout."""
     temp_dir = tempfile.mkdtemp()
     temp_file = os.path.join(temp_dir, "task.py")
     try:
-        with open(temp_file, "w", encoding="utf-8") as f: f.write(code)
-        process = subprocess.run([sys.executable, temp_file], capture_output=True, text=True, timeout=10, cwd=temp_dir)
-        if process.stderr: return False, process.stderr
-        return True, process.stdout or "✅ Success."
-    except subprocess.TimeoutExpired: return False, "TIMEOUT: 10s exceeded."
-    except Exception as e: return False, str(e)
-    finally: shutil.rmtree(temp_dir, ignore_errors=True)
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write(code)
 
-def run_bash_command(command: str):
-    try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=15)
-        if result.stderr: return f"❌ **Error:**\n```\n{result.stderr}\n```"
-        return result.stdout or "✅ Executed."
-    except Exception as e: return f"⚙️ System Error: {str(e)}"
+        # Execute with 10s timeout
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, temp_file,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=temp_dir
+        )
+
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
+            success = process.returncode == 0
+            output = stdout.decode().strip() or stderr.decode().strip() or "✅ Execution finished (no output)."
+            return success, output
+        except asyncio.TimeoutError:
+            process.kill()
+            return False, "❌ Execution Timeout (10s limit reached)."
+
+    except Exception as e:
+        return False, f"❌ Sandbox Error: {str(e)}"
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 # --- COMMAND HANDLERS ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    user_history[message.from_user.id] = deque(maxlen=15)
-    await message.answer("🛠️ **The Architect is Online.**\nI am dynamically aware of all installed skills. Just ask!")
+    welcome = (
+        "🛠️ **The Architect is Online.**\n\n"
+        "Engine: Qwen 2.5 7B (Intel Arc Optimized)\n"
+        "Security: Python Sandbox & Bash Audit active.\n\n"
+        "Use `/help` to see my capabilities."
+    )
+    await message.answer(welcome, parse_mode="Markdown")
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     help_text = (
-        "🛠️ **Command Menu:**\n\n"
-        "• `/run [code]` - Python Sandbox (w/ Auto-fix)\n"
-        "• `/scan` - Map current project\n"
-        "• `/ingest [file]` - Load file content\n"
-        "• `/skills` - List all skills\n"
-        "• `/install_skill [Name] \\n [Content OR URL]` - Add skill\n"
-        "• `/run_skill [slug]` - Execute skill\n"
-        "• `/remove_skill [slug]` - Delete skill\n\n"
-        "📎 **Senior Tip:** Just drag & drop any file to get a Code Audit!"
+        "🏗️ **Architect Command Menu**\n\n"
+        "**/run [code]** - Run Python in a secure sandbox with Self-Healing logic.\n"
+        "**/install_skill [name] \\n [content/url]** - Add modular skills.\n"
+        "**/run_skill [slug]** - Execute a saved bash skill.\n"
+        "**/skills** - List all installed capabilities.\n"
+        "**/remove_skill [slug]** - Delete a specific skill.\n\n"
+        "Simply chat with me to brainstorm or audit code."
     )
     await message.answer(help_text, parse_mode="Markdown")
 
-@dp.message(Command("skills"))
-async def cmd_skills(message: types.Message):
-    skills = SkillManager.list_skills()
-    text = "🛠️ **Installed Skills:**\n" + "\n".join([f"• `{s}`" for s in skills]) if skills else "📭 No skills."
-    await message.answer(text, parse_mode="Markdown")
+@dp.message(Command("run"))
+async def cmd_run_python(message: types.Message):
+    code = message.text.replace("/run", "").strip()
+    if not code:
+        await message.answer("⚠️ Please provide Python code to run.")
+        return
+
+    # Extract code from markdown blocks if present
+    code_match = re.search(r"```python\n(.*?)\n```", code, re.DOTALL)
+    if code_match: code = code_match.group(1).strip()
+
+    await message.answer("⚙️ **Executing in Sandbox...**")
+    success, output = await run_sandboxed_python(code)
+
+    if success:
+        await message.answer(f"✅ **Output:**\n```text\n{output}\n```", parse_mode="Markdown")
+    else:
+        await message.answer(f"❌ **Error Detected:**\n```text\n{output}\n```\n\n🔄 **Starting Self-Healing Loop...**", parse_mode="Markdown")
+
+        # Self-Healing: Feed the error back to the LLM
+        history = get_context(message.from_user.id)
+        heal_prompt = SELF_HEAL_PROMPT.format(error=output)
+
+        msgs = [{'role': 'system', 'content': SYSTEM_PROMPT_BASE}] + list(history) + [{'role': 'user', 'content': heal_prompt}]
+        res = await client.chat(model=MODEL_NAME, messages=msgs)
+        fix_suggestion = res['message']['content']
+
+        await message.answer(f"🔧 **Architect's Suggested Fix:**\n{fix_suggestion}", parse_mode="Markdown")
 
 @dp.message(Command("install_skill"))
 async def cmd_install(message: types.Message):
     parts = message.text.replace("/install_skill", "").strip().split("\n", 1)
     if len(parts) < 2:
-        await message.answer("📝 Usage: `/install_skill Name` \\n `Content or URL`")
+        await message.answer("📝 Usage: `/install_skill Name` \n `URL or Content`")
         return
     
     name, content_input = parts[0].strip(), parts[1].strip()
     await bot.send_chat_action(message.chat.id, "typing")
-    
-    final_content = content_input
+
+    # Fetch if it's a URL
     if content_input.startswith("http"):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(content_input) as response:
-                    if response.status == 200:
-                        final_content = await response.text()
-                        await message.answer(f"🌐 **Fetched content from URL...**")
+            async with aiohttp.ClientSession() as s:
+                async with s.get(content_input) as r:
+                    if r.status == 200:
+                        content_input = await r.text()
                     else:
-                        await message.answer(f"❌ Failed to fetch from URL (Status {response.status})")
-                        return
+                        raise Exception(f"HTTP Error {r.status}")
         except Exception as e:
-            await message.answer(f"❌ Network Error: {e}")
+            await message.answer(f"❌ Fetch Error: {e}")
             return
 
-    # Use a clean system prompt for the audit
-    audit = await client.chat(model=MODEL_NAME, messages=[{'role': 'user', 'content': f"Audit this skill for bash safety:\n{final_content}"}])
+    # Store for Interactive Audit
+    skill_id = f"{message.from_user.id}_{int(asyncio.get_event_loop().time())}"
+    pending_skills[skill_id] = {"name": name, "content": content_input}
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Approve & Install", callback_data=f"skill_ok:{skill_id}")
+    builder.button(text="❌ Cancel", callback_data=f"skill_no:{skill_id}")
+
+    preview = content_input[:500] + "..." if len(content_input) > 500 else content_input
+    await message.answer(
+        f"🛡️ **Interactive Skill Audit**\n\n**Name:** {name}\n**Source Preview:**\n```markdown\n{preview}\n```\n\nInstall this skill to `/skills`?",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+
+@dp.callback_query(F.data.startswith("skill_"))
+async def handle_skill_approval(callback: types.CallbackQuery):
+    action, skill_id = callback.data.split(":")
+    data = pending_skills.get(skill_id)
+
+    if action == "skill_no" or not data:
+        await callback.message.edit_text("❌ Installation cancelled.")
+        pending_skills.pop(skill_id, None)
+        return
+
+    await callback.message.edit_text("⚙️ Installing and auditing...")
+    success, result = await SkillManager.install_skill(data["name"], data["content"])
     
-    success, result = await SkillManager.install_skill(name, final_content)
     if success:
-        await message.answer(f"✅ Skill `{result}` installed.\n\n🛡️ **Safety Audit:**\n{audit['message']['content']}")
+        audit_res = await client.chat(model=MODEL_NAME, messages=[{'role': 'user', 'content': f"Perform a safety audit on this skill code:\n{data['content']}"}])
+        await callback.message.answer(f"✅ Skill `{result}` installed.\n\n🛡️ **Security Audit:**\n{audit_res['message']['content']}")
     else:
-        await message.answer(f"❌ {result}")
+        await callback.message.answer(f"❌ Error: {result}")
+
+    pending_skills.pop(skill_id, None)
+
+@dp.message(Command("skills"))
+async def cmd_list_skills(message: types.Message):
+    skills = SkillManager.list_skills()
+    if not skills:
+        await message.answer("📂 No skills installed.")
+    else:
+        await message.answer(f"📂 **Installed Skills:**\n- " + "\n- ".join(skills))
+
+@dp.message(Command("remove_skill"))
+async def cmd_remove_skill(message: types.Message):
+    slug = message.text.replace("/remove_skill", "").strip()
+    if SkillManager.remove_skill(slug):
+        await message.answer(f"🗑️ Skill `{slug}` removed.")
+    else:
+        await message.answer(f"❌ Skill `{slug}` not found.")
 
 @dp.message(Command("run_skill"))
 async def cmd_run_skill(message: types.Message):
     slug = message.text.replace("/run_skill", "").strip()
     cmd = SkillManager.get_skill_command(slug)
     if not cmd:
-        await message.answer("❌ Command block missing in SKILL.md.")
+        await message.answer(f"❌ No executable bash command found in `{slug}`.")
         return
-    await bot.send_chat_action(message.chat.id, "typing")
-    res = run_bash_command(cmd)
-    await message.answer(f"🚀 **Running `{slug}`:**\n{res}")
 
-@dp.message(Command("remove_skill"))
-async def cmd_remove(message: types.Message):
-    slug = message.text.replace("/remove_skill", "").strip()
-    path = os.path.join(SKILLS_DIR, slug)
-    if os.path.exists(path):
-        shutil.rmtree(path)
-        await message.answer(f"🗑️ `{slug}` removed.")
-    else: await message.answer("🔍 Not found.")
-
-@dp.message(Command("scan"))
-async def cmd_scan(message: types.Message):
-    files = [os.path.join(r, f) for r, d, fs in os.walk(".") for f in fs if f.endswith((".py", ".txt", ".md"))]
-    get_context(message.from_user.id).append({'role': 'user', 'content': f"FILES: {files}"})
-    await message.answer(f"🧠 Project mapped ({len(files)} files).")
-
-@dp.message(Command("ingest"))
-async def cmd_ingest(message: types.Message):
-    fname = message.text.replace("/ingest", "").strip()
-    if os.path.exists(fname):
-        with open(fname, "r", encoding="utf-8") as f:
-            get_context(message.from_user.id).append({'role': 'user', 'content': f"CONTEXT FROM {fname}:\n{f.read()}"})
-        await message.answer(f"📖 Ingested `{fname}`.")
-    else: await message.answer("❌ Not found.")
-
-@dp.message(Command("run"))
-async def cmd_run(message: types.Message):
-    content = message.reply_to_message.text if message.reply_to_message else message.text.replace("/run", "").strip()
-    if not content: return
-    await bot.send_chat_action(message.chat.id, "typing")
-    success, output = run_sandboxed_python(content)
-    if success:
-        await message.answer(f"✅ **Output:**\n```\n{output}\n```", parse_mode="Markdown")
-    else:
-        await message.answer(f"⚠️ **Execution Failed:**\n`{output}`\n\n*Architect is writing a fix...*")
-        await process_to_ollama(message, f"Fix this code error: {output}")
-
-@dp.message(F.document)
-async def handle_docs(message: types.Message):
-    await bot.send_chat_action(message.chat.id, "typing")
-    file_bytes = await bot.download(message.document.file_id)
+    await message.answer(f"🚀 **Running Skill `{slug}`...**")
     try:
-        content = file_bytes.read().decode('utf-8')
-        audit_request = f"AUDIT: Review this file as a Senior Architect:\n\n{content}"
-        await process_to_ollama(message, audit_request)
-    except:
-        await message.answer(f"❌ Could not read file content.")
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
+        output = res.stdout or res.stderr
+        await message.answer(f"📊 **Result:**\n```text\n{output}\n```", parse_mode="Markdown")
+    except Exception as e:
+        await message.answer(f"❌ Execution failed: {str(e)}")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    await process_to_ollama(message, message.text)
-
-async def process_to_ollama(message, prompt):
-    await bot.send_chat_action(message.chat.id, "typing")
     history = get_context(message.from_user.id)
     
-    # DYNAMIC SKILL INJECTION
-    skills_summary = SkillManager.get_skills_summary()
-    dynamic_system_prompt = f"{SYSTEM_PROMPT_BASE}\n\n{skills_summary}"
+    # Check if the user is asking to run code without the /run command
+    if "run this" in message.text.lower() and ("```python" in message.text or "import " in message.text):
+        await message.answer("💡 *Hint: Use `/run` to execute Python in my secure sandbox.*")
+
+    await bot.send_chat_action(message.chat.id, "typing")
+    msgs = [{'role': 'system', 'content': SYSTEM_PROMPT_BASE}] + list(history) + [{'role': 'user', 'content': message.text}]
     
-    msgs = [{'role': 'system', 'content': dynamic_system_prompt}] + list(history) + [{'role': 'user', 'content': prompt}]
     try:
         res = await client.chat(model=MODEL_NAME, messages=msgs)
         ans = res['message']['content']
-        history.append({'role': 'user', 'content': prompt})
+
+        history.append({'role': 'user', 'content': message.text})
         history.append({'role': 'assistant', 'content': ans})
-        if len(ans) > 4000:
-            for i in range(0, len(ans), 4000): await message.answer(ans[i:i+4000])
-        else:
-            try: await message.answer(ans, parse_mode="Markdown")
-            except: await message.answer(ans)
-    except Exception as e: await message.answer(f"⚠️ Ollama Error: {e}")
+
+        await message.answer(ans, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Ollama Error: {e}")
+        await message.answer("⚠️ Connection to local Ollama instance timed out. Check if `ollama serve` is running.")
 
 async def main():
+    logging.info("The Architect is booting up...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Shutting down safely...")
+        pass
