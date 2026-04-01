@@ -75,7 +75,7 @@ class SkillManager:
         path = os.path.join(SKILLS_DIR, slug)
         if os.path.exists(path):
             return False, f"Skill `{slug}` already exists."
-        
+
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write(content)
@@ -106,7 +106,7 @@ async def run_sandboxed_python(code: str):
     try:
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(code)
-        
+
         # Execute with 10s timeout
         process = await asyncio.create_subprocess_exec(
             sys.executable, temp_file,
@@ -114,7 +114,7 @@ async def run_sandboxed_python(code: str):
             stderr=asyncio.subprocess.PIPE,
             cwd=temp_dir
         )
-        
+
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
             success = process.returncode == 0
@@ -123,7 +123,7 @@ async def run_sandboxed_python(code: str):
         except asyncio.TimeoutError:
             process.kill()
             return False, "❌ Execution Timeout (10s limit reached)."
-            
+
     except Exception as e:
         return False, f"❌ Sandbox Error: {str(e)}"
     finally:
@@ -171,15 +171,15 @@ async def cmd_run_python(message: types.Message):
         await message.answer(f"✅ **Output:**\n```text\n{output}\n```", parse_mode="Markdown")
     else:
         await message.answer(f"❌ **Error Detected:**\n```text\n{output}\n```\n\n🔄 **Starting Self-Healing Loop...**", parse_mode="Markdown")
-        
+
         # Self-Healing: Feed the error back to the LLM
         history = get_context(message.from_user.id)
         heal_prompt = SELF_HEAL_PROMPT.format(error=output)
-        
+
         msgs = [{'role': 'system', 'content': SYSTEM_PROMPT_BASE}] + list(history) + [{'role': 'user', 'content': heal_prompt}]
         res = await client.chat(model=MODEL_NAME, messages=msgs)
         fix_suggestion = res['message']['content']
-        
+
         await message.answer(f"🔧 **Architect's Suggested Fix:**\n{fix_suggestion}", parse_mode="Markdown")
 
 @dp.message(Command("install_skill"))
@@ -197,9 +197,9 @@ async def cmd_install(message: types.Message):
         try:
             async with aiohttp.ClientSession() as s:
                 async with s.get(content_input) as r:
-                    if r.status == 200: 
+                    if r.status == 200:
                         content_input = await r.text()
-                    else: 
+                    else:
                         raise Exception(f"HTTP Error {r.status}")
         except Exception as e:
             await message.answer(f"❌ Fetch Error: {e}")
@@ -212,7 +212,7 @@ async def cmd_install(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Approve & Install", callback_data=f"skill_ok:{skill_id}")
     builder.button(text="❌ Cancel", callback_data=f"skill_no:{skill_id}")
-    
+
     preview = content_input[:500] + "..." if len(content_input) > 500 else content_input
     await message.answer(
         f"🛡️ **Interactive Skill Audit**\n\n**Name:** {name}\n**Source Preview:**\n```markdown\n{preview}\n```\n\nInstall this skill to `/skills`?",
@@ -238,7 +238,7 @@ async def handle_skill_approval(callback: types.CallbackQuery):
         await callback.message.answer(f"✅ Skill `{result}` installed.\n\n🛡️ **Security Audit:**\n{audit_res['message']['content']}")
     else:
         await callback.message.answer(f"❌ Error: {result}")
-    
+
     pending_skills.pop(skill_id, None)
 
 @dp.message(Command("skills"))
@@ -264,7 +264,7 @@ async def cmd_run_skill(message: types.Message):
     if not cmd:
         await message.answer(f"❌ No executable bash command found in `{slug}`.")
         return
-    
+
     await message.answer(f"🚀 **Running Skill `{slug}`...**")
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
@@ -287,10 +287,10 @@ async def handle_text(message: types.Message):
     try:
         res = await client.chat(model=MODEL_NAME, messages=msgs)
         ans = res['message']['content']
-        
+
         history.append({'role': 'user', 'content': message.text})
         history.append({'role': 'assistant', 'content': ans})
-        
+
         await message.answer(ans, parse_mode="Markdown")
     except Exception as e:
         logging.error(f"Ollama Error: {e}")
