@@ -12,9 +12,11 @@ from collections import deque
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from ollama import AsyncClient
+from dotenv import load_dotenv
 
 # --- CONFIGURATION ---
-TOKEN = "8457312641:AAFnQCqgwnhsmvtIPgkJ3BkgOuo3hSKMLb4" 
+load_dotenv() # This loads the variables from .env
+TOKEN = os.getenv("BOT_TOKEN")
 MODEL_NAME = "qwen2.5:7b-instruct-q4_0" 
 OLLAMA_URL = "http://172.25.64.1:11434" 
 SKILLS_DIR = os.path.join(os.getcwd(), "skills")
