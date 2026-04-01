@@ -7,6 +7,7 @@ import tempfile
 import re
 import shutil
 import aiohttp
+import textwrap
 from logging.handlers import RotatingFileHandler
 from collections import deque
 from aiogram import Bot, Dispatcher, types, F
@@ -37,7 +38,11 @@ SYSTEM_PROMPT_BASE = (
     "You are 'The Architect', an Elite Senior Software Engineer.\n"
     "Your goal is to build robust, secure, and efficient solutions on an MSI Claw (Intel Arc).\n"
     "Respond ONLY in English. Explain logic clearly. Audit all bash for safety.\n"
-    "When providing Python code to be executed, ensure it is self-contained."
+    "When providing Python code to be executed, ensure it is self-contained.\n\n"
+    "**UX FOR MOBILE HANDHELDS:**\n"
+    "1. ENSURE ALL CODE BLOCKS AND PROSE DO NOT EXCEED 50 CHARACTERS PER LINE.\n"
+    "2. NEVER USE MARKDOWN TABLES. Use Bolded Key-Value Lists instead (e.g., **CPU:** Intel Ultra 7).\n"
+    "3. Favor vertical lists and concise explanations for readability on 7-inch screens."
 )
 
 SELF_HEAL_PROMPT = (
@@ -56,6 +61,22 @@ dp = Dispatcher()
 client = AsyncClient(host=OLLAMA_URL)
 user_history = {}
 pending_skills = {} # Temporary storage for skills awaiting approval
+
+def format_output_for_mobile(text: str, max_width: int = 50, max_len: int = 3000) -> str:
+    """Wraps and truncates output for mobile-friendly display."""
+    wrapped_lines = []
+    for line in text.splitlines():
+        if len(line) > max_width:
+            wrapped_lines.extend(textwrap.wrap(line, width=max_width, break_long_words=True, replace_whitespace=False))
+        else:
+            wrapped_lines.append(line)
+
+    formatted_text = "\n".join(wrapped_lines)
+
+    if len(formatted_text) > max_len:
+        footer = "\n--- Output Truncated ---"
+        formatted_text = formatted_text[:max_len - len(footer)] + footer
+    return formatted_text
 
 def get_context(user_id):
     if user_id not in user_history:
@@ -134,8 +155,8 @@ async def run_sandboxed_python(code: str):
 async def cmd_start(message: types.Message):
     welcome = (
         "🛠️ **The Architect is Online.**\n\n"
-        "Engine: Qwen 2.5 7B (Intel Arc Optimized)\n"
-        "Security: Python Sandbox & Bash Audit active.\n\n"
+        "• **Engine:** Qwen 2.5 7B (Intel Arc)\n"
+        "• **Security:** Sandbox & Audit active.\n\n"
         "Use `/help` to see my capabilities."
     )
     await message.answer(welcome, parse_mode="Markdown")
@@ -144,12 +165,15 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     help_text = (
         "🏗️ **Architect Command Menu**\n\n"
-        "**/run [code]** - Run Python in a secure sandbox with Self-Healing logic.\n"
-        "**/install_skill [name] \\n [content/url]** - Add modular skills.\n"
-        "**/run_skill [slug]** - Execute a saved bash skill.\n"
-        "**/skills** - List all installed capabilities.\n"
-        "**/remove_skill [slug]** - Delete a specific skill.\n\n"
-        "Simply chat with me to brainstorm or audit code."
+        "• **/run [code]** - Run Python code in a\n"
+        "  secure sandbox with Self-Healing.\n"
+        "• **/install_skill [name] \\n [content]**\n"
+        "  Add modular skills via content or URL.\n"
+        "• **/run_skill [slug]** - Execute a saved\n"
+        "  bash skill on the local system.\n"
+        "• **/skills** - List all installed skills.\n"
+        "• **/remove_skill [slug]** - Delete skill.\n\n"
+        "Chat with me to brainstorm or audit code."
     )
     await message.answer(help_text, parse_mode="Markdown")
 
@@ -166,11 +190,12 @@ async def cmd_run_python(message: types.Message):
 
     await message.answer("⚙️ **Executing in Sandbox...**")
     success, output = await run_sandboxed_python(code)
+    formatted_output = format_output_for_mobile(output)
 
     if success:
-        await message.answer(f"✅ **Output:**\n```text\n{output}\n```", parse_mode="Markdown")
+        await message.answer(f"✅ **Output:**\n```text\n{formatted_output}\n```", parse_mode="Markdown")
     else:
-        await message.answer(f"❌ **Error Detected:**\n```text\n{output}\n```\n\n🔄 **Starting Self-Healing Loop...**", parse_mode="Markdown")
+        await message.answer(f"❌ **Error Detected:**\n```text\n{formatted_output}\n```\n\n🔄 **Starting Self-Healing Loop...**", parse_mode="Markdown")
         
         # Self-Healing: Feed the error back to the LLM
         history = get_context(message.from_user.id)
@@ -213,7 +238,7 @@ async def cmd_install(message: types.Message):
     builder.button(text="✅ Approve & Install", callback_data=f"skill_ok:{skill_id}")
     builder.button(text="❌ Cancel", callback_data=f"skill_no:{skill_id}")
     
-    preview = content_input[:500] + "..." if len(content_input) > 500 else content_input
+    preview = format_output_for_mobile(content_input, max_len=500)
     await message.answer(
         f"🛡️ **Interactive Skill Audit**\n\n**Name:** {name}\n**Source Preview:**\n```markdown\n{preview}\n```\n\nInstall this skill to `/skills`?",
         reply_markup=builder.as_markup(),
@@ -269,7 +294,8 @@ async def cmd_run_skill(message: types.Message):
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
         output = res.stdout or res.stderr
-        await message.answer(f"📊 **Result:**\n```text\n{output}\n```", parse_mode="Markdown")
+        formatted_output = format_output_for_mobile(output)
+        await message.answer(f"📊 **Result:**\n```text\n{formatted_output}\n```", parse_mode="Markdown")
     except Exception as e:
         await message.answer(f"❌ Execution failed: {str(e)}")
 
