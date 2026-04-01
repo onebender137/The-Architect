@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Pre-push hook to scan for secrets using TruffleHog.
+#
+# To install this hook:
+# cp scripts/pre-push .git/hooks/pre-push
+# chmod +x .git/hooks/pre-push
+
+# Check if trufflehog is installed
+if ! command -v trufflehog &> /dev/null; then
+    echo "❌ TruffleHog not found. Security scan aborted."
+    echo ""
+    echo "To install TruffleHog, run one of the following commands:"
+    echo "  Brew (macOS/Linux): brew install trufflehog"
+    echo "  Linux/WSL (binary): curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin"
+    echo "  Docker: docker pull trufflesecurity/trufflehog:latest"
+    echo ""
+    echo "Please install TruffleHog and try pushing again, or use --no-verify to skip (not recommended)."
+    exit 1
+fi
+
+# Get the commits being pushed
+z40=0000000000000000000000000000000000000000
+
+while read local_ref local_sha remote_ref remote_sha
+do
+	if [ "$local_sha" = $z40 ]; then
+		# Handle delete
+		:
+	else
+		if [ "$remote_sha" = $z40 ]; then
+			# New branch, scan all commits that are only in the local branch
+            echo "🛡️  Scanning new branch $local_ref for secrets..."
+            # Using HEAD to scan since it's the current state about to be pushed
+            # TruffleHog --since-commit HEAD might only scan the diff of the last commit,
+            # so for a new branch we use a more comprehensive scan if possible.
+            # But since-commit <hash> is the most reliable way to scan a range.
+            # If we don't have a remote_sha, we can try to compare against 'main' if it exists.
+            if git rev-parse --verify main >/dev/null 2>&1; then
+                range="main"
+            else
+                # Fallback: scan just the tip if we can't find a base
+                range="$local_sha"
+            fi
+		else
+			# Update existing branch, scan new commits from remote_sha
+            range="$remote_sha"
+		fi
+
+		echo "🛡️  Scanning commits since $range for secrets..."
+
+		# Run trufflehog
+		# --fail ensures it exits with non-zero code if secrets are found
+		# --only-verified=false ensures we catch potential secrets even if they can't be verified
+        # --exclude-paths=.trufflehog-ignore integrates the ignore file
+		if ! trufflehog git file://. --since-commit "$range" --fail --only-verified=false --exclude-paths=.trufflehog-ignore --quiet; then
+			echo ""
+			echo "❌ SECRETS DETECTED! Push blocked."
+			echo "Please remove the secrets from your commit history and try again."
+			exit 1
+		fi
+	fi
+done
+
+exit 0
