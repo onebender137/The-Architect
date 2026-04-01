@@ -31,11 +31,6 @@ do
 		if [ "$remote_sha" = $z40 ]; then
 			# New branch, scan all commits that are only in the local branch
             echo "🛡️  Scanning new branch $local_ref for secrets..."
-            # Using HEAD to scan since it's the current state about to be pushed
-            # TruffleHog --since-commit HEAD might only scan the diff of the last commit,
-            # so for a new branch we use a more comprehensive scan if possible.
-            # But since-commit <hash> is the most reliable way to scan a range.
-            # If we don't have a remote_sha, we can try to compare against 'main' if it exists.
             if git rev-parse --verify main >/dev/null 2>&1; then
                 range="main"
             else
@@ -51,9 +46,8 @@ do
 
 		# Run trufflehog
 		# --fail ensures it exits with non-zero code if secrets are found
-		# --only-verified=false ensures we catch potential secrets even if they can't be verified
         # --exclude-paths=.trufflehog-ignore integrates the ignore file
-		if ! trufflehog git file://. --since-commit "$range" --fail --only-verified=false --exclude-paths=.trufflehog-ignore --quiet; then
+		if ! trufflehog git file://. --since-commit "$range" --fail --exclude-paths=.trufflehog-ignore --quiet; then
 			echo ""
 			echo "❌ SECRETS DETECTED! Push blocked."
 			echo "Please remove the secrets from your commit history and try again."
