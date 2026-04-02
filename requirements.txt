@@ -2,3 +2,5 @@ aiogram
 ollama
 aiohttp
 pyfiglet
+torch
+python-dotenv
