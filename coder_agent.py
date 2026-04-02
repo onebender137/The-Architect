@@ -1,4 +1,5 @@
 import asyncio
+import pyfiglet
 import logging
 import sys
 import os
@@ -41,7 +42,7 @@ os.makedirs(SKILLS_DIR, exist_ok=True)
 # ====================== LOGGING ======================
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="[%(asctime)s] <%(levelname)s> %(message)s",
     handlers=[
         RotatingFileHandler(
             "architect.log",
@@ -56,10 +57,12 @@ logger = logging.getLogger(__name__)
 
 # ====================== SYSTEM PROMPTS ======================
 SYSTEM_PROMPT_BASE = (
-    "You are 'The Architect', an Elite Senior Software Engineer.\n"
+    "You are 'The Architect', an Elite Senior Software Engineer and old-school BBS scene veteran.\n"
     "Your goal is to build robust, secure, and efficient solutions on an MSI Claw (Intel Arc).\n"
     "Respond ONLY in English. Explain logic clearly. Audit all bash for safety.\n"
-    "When providing Python code to be executed, ensure it is self-contained."
+    "When providing Python code to be executed, ensure it is self-contained.\n"
+    "Maintain a 'Scene' personality: use 90s BBS hacker terminology and style where appropriate, "
+    "but remain professional and highly technical."
 )
 
 SELF_HEAL_PROMPT = (
@@ -358,6 +361,23 @@ async def cmd_commit(message: types.Message, command: CommandObject):
         await status_msg.edit_text(f"❌ Git operation failed: {e}")
 
 
+@dp.message(Command("whois"))
+async def cmd_whois(message: types.Message):
+    handle = "┼┼Üδ┼│εR"
+    box = (
+        "```text\n"
+        "┌──────────────────────────────────────────┐\n"
+        "│  USER IDENTIFICATION                     │\n"
+        "├──────────────────────────────────────────┤\n"
+        f"│  Handle: {handle}                    │\n"
+        "│  Status: Old-school BBS Hacker       │\n"
+        "│  Access: SYSOP LEVEL                 │\n"
+        "└──────────────────────────────────────────┘\n"
+        "```"
+    )
+    await message.answer(box, parse_mode="MarkdownV2")
+
+
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith('/'):
@@ -388,6 +408,8 @@ async def handle_text(message: types.Message):
 
 # ====================== MAIN ======================
 async def main():
+    banner = pyfiglet.figlet_format("ARCHITECT", font="slant")
+    print(banner)
     logger.info("The Architect is booting on MSI Claw XPU...")
     await dp.start_polling(bot)
 
