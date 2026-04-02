@@ -1,6 +1,5 @@
 architect.log
 *.pyc
 __pycache__/
-skills/
 .env
 venv/
