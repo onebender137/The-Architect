@@ -4,3 +4,8 @@ __pycache__/
 skills/
 .env
 venv/
+*.py[cod]
+*.deb
+.vscode/
+.idea/
+*.log
