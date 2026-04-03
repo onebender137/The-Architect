@@ -17,7 +17,7 @@ This script will:
 1. Install system dependencies (`clinfo`, `libze-loader`).
 2. Install **TruffleHog** and activate the **Git Pre-Push Hook** for security.
 3. Create a virtual environment and install the **Intel-optimized AI stack** (Torch + IPEX).
-4. Generate a `.env` template with optimal hardware settings.
+4. Generate a `.env` template (or merge into existing) with optimal hardware settings.
 
 ## 🏎️ Hardware Optimization (Intel Arc & IPEX)
 
@@ -27,6 +27,7 @@ Critical environment variables used:
 - `ONEAPI_DEVICE_SELECTOR=level_zero:0`: Forces execution on the Arc iGPU.
 - `SYCL_ENABLE=1`: Enables the Data Parallel C++ runtime.
 - `OLLAMA_NUM_GPU=999`: Offloads all model layers to the 8 Xe-cores.
+- `UR_L0_LOADER_IGNORE_VERSION=1`: Prevents driver mismatch errors.
 
 ## 🔒 Local-First & Private
 

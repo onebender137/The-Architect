@@ -1,8 +1,8 @@
 import asyncio
+import pyfiglet
 import logging
 import sys
 import os
-import pyfiglet
 from collections import deque
 from logging.handlers import RotatingFileHandler
 
@@ -21,7 +21,6 @@ if not TOKEN:
     logging.error("BOT_TOKEN is missing from .env file!")
     sys.exit(1)
 
-# Default to dolphin-mistral:7b as per user request
 MODEL_NAME = os.getenv("MODEL_NAME", "dolphin-mistral:7b")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://172.25.64.1:11434")
 
@@ -35,8 +34,7 @@ logging.basicConfig(
             maxBytes=5_000_000,
             backupCount=5,
             encoding="utf-8"
-        ),
-        logging.StreamHandler()
+        )
     ]
 )
 
@@ -67,7 +65,7 @@ register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pend
 async def main():
     banner = pyfiglet.figlet_format("ARCHITECT", font="slant")
     print(banner)
-    logger.info(f"The Architect is booting on MSI Claw ({device})...")
+    logger.info("The Architect is booting on MSI Claw XPU...")
     await dp.start_polling(bot)
 
 

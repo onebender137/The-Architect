@@ -26,7 +26,7 @@ PARAMETER top_p 0.9
 
 ## 🌍 Environment Variables
 
-These are automatically added to your `.env` by `setup_claw.sh`:
+These are automatically added or merged into your `.env` by `setup_claw.sh`:
 
 **Key Variables:**
 - `ONEAPI_DEVICE_SELECTOR=level_zero:0`: Forces the Level Zero driver for Intel GPU.

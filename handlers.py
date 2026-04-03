@@ -154,18 +154,6 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         else:
             await callback.message.edit_text(f"❌ {result}")
 
-    @dp.message(Command("commit"))
-    async def cmd_commit(message: types.Message, command: CommandObject):
-        commit_msg = command.args or "Update by Jules"
-
-        status_msg = await message.answer(f"🚀 Staging, committing, and pushing: '{commit_msg}'...")
-
-        try:
-            result = git_manager("push", commit_msg)
-            await status_msg.edit_text(f"✅ {result}")
-        except Exception as e:
-            await status_msg.edit_text(f"❌ Git operation failed: {e}")
-
     @dp.message(Command("whois"))
     async def cmd_whois(message: types.Message):
         handle = "┼┼Üδ┼│εR"
@@ -181,6 +169,18 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "```"
         )
         await message.answer(box, parse_mode="MarkdownV2")
+
+    @dp.message(Command("commit"))
+    async def cmd_commit(message: types.Message, command: CommandObject):
+        commit_msg = command.args or "Update by Jules"
+
+        status_msg = await message.answer(f"🚀 Staging, committing, and pushing: '{commit_msg}'...")
+
+        try:
+            result = git_manager("push", commit_msg)
+            await status_msg.edit_text(f"✅ {result}")
+        except Exception as e:
+            await status_msg.edit_text(f"❌ Git operation failed: {e}")
 
     @dp.message(F.text)
     async def handle_text(message: types.Message):

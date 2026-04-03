@@ -99,14 +99,31 @@ except Exception as e:
 
 # 7. OneAPI/IPEX Configuration (.env)
 echo "📝 Generating local .env configuration..."
-if [ ! -f .env ]; then
+if [ -f .env ]; then
+    echo "⚠️  .env already exists. Merging new Arc variables while preserving existing config..."
+    # Append Arc variables if they don't exist
+    for var in ONEAPI_DEVICE_SELECTOR SYCL_ENABLE OLLAMA_NUM_GPU ZES_ENABLE_SYSMAN SYCL_CACHE_PERSISTENT MODEL_NAME OLLAMA_URL UR_L0_LOADER_IGNORE_VERSION; do
+        if ! grep -q "^$var=" .env; then
+            case $var in
+                ONEAPI_DEVICE_SELECTOR) echo "ONEAPI_DEVICE_SELECTOR=level_zero:0" >> .env ;;
+                SYCL_ENABLE) echo "SYCL_ENABLE=1" >> .env ;;
+                OLLAMA_NUM_GPU) echo "OLLAMA_NUM_GPU=999" >> .env ;;
+                ZES_ENABLE_SYSMAN) echo "ZES_ENABLE_SYSMAN=1" >> .env ;;
+                SYCL_CACHE_PERSISTENT) echo "SYCL_CACHE_PERSISTENT=1" >> .env ;;
+                MODEL_NAME) echo "MODEL_NAME=dolphin-mistral:7b" >> .env ;;
+                OLLAMA_URL) echo "OLLAMA_URL=http://172.25.64.1:11434" >> .env ;;
+                UR_L0_LOADER_IGNORE_VERSION) echo "UR_L0_LOADER_IGNORE_VERSION=1" >> .env ;;
+            esac
+        fi
+    done
+else
     cat <<EOF > .env
-# --- The Architect: Intel Arc Optimized Environment ---
+# --- The Architect: Telegram Bot Configuration ---
 BOT_TOKEN="your_telegram_bot_token_here"
-MODEL_NAME="dolphin-mistral:7b"
-OLLAMA_URL="http://172.25.64.1:11434"
+MODEL_NAME=dolphin-mistral:7b
+OLLAMA_URL=http://172.25.64.1:11434
 
-# Intel XPU / IPEX Optimization
+# --- The Architect: Intel Arc Optimized Environment ---
 ONEAPI_DEVICE_SELECTOR=level_zero:0
 SYCL_ENABLE=1
 OLLAMA_NUM_GPU=999
@@ -114,13 +131,11 @@ ZES_ENABLE_SYSMAN=1
 SYCL_CACHE_PERSISTENT=1
 UR_L0_LOADER_IGNORE_VERSION=1
 EOF
-    echo "✅ Local .env file generated in project root."
-else
-    echo "ℹ️ .env file already exists, skipping generation."
 fi
 
 echo "-------------------------------------------------------"
 echo "🏁 Setup Complete!"
 echo "✅ Virtual Environment: $VENV_PATH"
+echo "✅ Local .env file updated/generated."
 echo "💡 To use: source $VENV_PATH/bin/activate && python coder_agent.py"
 echo "-------------------------------------------------------"
