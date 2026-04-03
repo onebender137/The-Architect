@@ -6,7 +6,9 @@ import asyncio
 import sys
 
 SKILLS_DIR = os.path.join(os.getcwd(), "skills")
+WORKSPACE_DIR = os.path.join(os.getcwd(), "workspace")
 os.makedirs(SKILLS_DIR, exist_ok=True)
+os.makedirs(WORKSPACE_DIR, exist_ok=True)
 
 # ====================== SYSTEM PROMPTS ======================
 SYSTEM_PROMPT_BASE = (
@@ -78,8 +80,8 @@ class SkillManager:
 
 # ====================== EXECUTION ENGINES ======================
 async def run_sandboxed_python(code: str) -> tuple[bool, str]:
-    temp_dir = tempfile.mkdtemp()
-    temp_file = os.path.join(temp_dir, "task.py")
+    """Runs Python code in a persistent workspace directory."""
+    temp_file = os.path.join(WORKSPACE_DIR, "task.py")
 
     try:
         with open(temp_file, "w", encoding="utf-8") as f:
@@ -90,7 +92,7 @@ async def run_sandboxed_python(code: str) -> tuple[bool, str]:
             temp_file,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=temp_dir,
+            cwd=WORKSPACE_DIR,
             env=os.environ.copy(),  # Pass XPU environment
         )
 
@@ -104,6 +106,4 @@ async def run_sandboxed_python(code: str) -> tuple[bool, str]:
             return False, "❌ Execution timed out after 15 seconds."
 
     except Exception as e:
-        return False, f"❌ Sandbox Error: {str(e)}"
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        return False, f"❌ Workspace Error: {str(e)}"
