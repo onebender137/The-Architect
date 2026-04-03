@@ -66,7 +66,7 @@ Intel Arc Graphics Drivers: Ensure you are on the latest "Game On" drivers.
 
 Intel Arc Optimized: Custom Windows-to-WSL bridge ensures the LLM runs on the GPU, not the CPU.
 
-Secure Subprocess Sandbox: Executes generated Python code in isolated temporary directories.
+Persistent Task Workspace: Executes generated Python code in a permanent `/workspace` directory for stable, cross-session calculations.
 
 OpenClaw Skill Manager: A modular system to install, audit, and run skills via Telegram.
 
@@ -90,6 +90,10 @@ requirements.txt: Python dependencies.
 
 memory_manager.py: The Neural Memory (RAG) engine.
 
+voice_utils.py: Local Whisper-based voice transcription logic.
+
 chroma_db/: (Hidden/Ignored) The local vector database.
+
+workspace/: (Hidden/Ignored) The persistent scratchpad for autonomous tasks.
 
 .env: (Hidden) Stores your private bot token.
