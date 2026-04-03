@@ -31,8 +31,8 @@
 * [x] **Phase 6: The Neural Expansion (IN PROGRESS)**
     * [x] 🧠 **Neural Memory (RAG)**: Persistent local context using ChromaDB.
     * [ ] 🤖 **Autonomous Task Agent**: `/build` command loop.
+    * [x] 🎛️ **Claw HUD**: Real-time ASCII telemetry dashboard.
 * [x] **Roadmap**:
     3. 🎙️ **Voice-to-Code**: Whisper XPU integration.
-    4. 🎛️ **Claw HUD**: BBS-style ASCII telemetry.
     5. 🛠️ **Self-Evolving Skills**: LLM-authored modular skills.
 * [ ] *Next Step:* Build a "Diagnostic Skill" for real-time MSI Claw thermal monitoring.

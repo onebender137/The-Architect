@@ -70,6 +70,8 @@ Secure Subprocess Sandbox: Executes generated Python code in isolated temporary 
 
 OpenClaw Skill Manager: A modular system to install, audit, and run skills via Telegram.
 
+Claw HUD: A BBS-style ASCII telemetry dashboard for real-time hardware monitoring.
+
 Self-Healing Loop: Automatically monitors execution errors and writes its own hotfixes.
 
 Neural Memory (RAG): Persistent local codebase context using ChromaDB and Intel-optimized embeddings.

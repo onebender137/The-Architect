@@ -62,6 +62,57 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         )
         await message.answer(format_output_for_mobile(help_text), parse_mode="Markdown")
 
+    @dp.message(Command("hud"))
+    async def cmd_hud(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "typing")
+
+        try:
+            # CPU & Load
+            load_avg = "N/A"
+            if os.path.exists("/proc/loadavg"):
+                with open("/proc/loadavg", "r") as f:
+                    load_avg = " ".join(f.read().split()[:3])
+
+            # Memory
+            mem_info = "N/A"
+            res_mem = subprocess.run(["free", "-m"], capture_output=True, text=True)
+            if res_mem.returncode == 0:
+                lines = res_mem.stdout.splitlines()
+                if len(lines) > 1:
+                    parts = lines[1].split()
+                    mem_info = f"{parts[2]}MB / {parts[1]}MB"
+
+            # Uptime
+            uptime_str = "N/A"
+            if os.path.exists("/proc/uptime"):
+                with open("/proc/uptime", "r") as f:
+                    seconds = float(f.read().split()[0])
+                    mins, secs = divmod(seconds, 60)
+                    hours, mins = divmod(mins, 60)
+                    uptime_str = f"{int(hours)}h {int(mins)}m"
+
+            # GPU (Intel Arc) - Fallback detection
+            gpu_status = "ARC [IDLE]"
+            if device == "xpu":
+                gpu_status = "ARC [ACTIVE]"
+
+            # BBS-Style ASCII HUD
+            hud = (
+                "```text\n"
+                "╔════════════ ARCHITECT HUD ════════════╗\n"
+                f"║ CPU LOAD: {load_avg.ljust(27)} ║\n"
+                f"║ MEMORY:   {mem_info.ljust(27)} ║\n"
+                f"║ UPTIME:   {uptime_str.ljust(27)} ║\n"
+                "╟───────────────────────────────────────╢\n"
+                f"║ GPU:      {gpu_status.ljust(27)} ║\n"
+                f"║ ENGINE:   {MODEL_NAME[:25].ljust(27)} ║\n"
+                "╚═══════════════════════════════════════╝\n"
+                "```"
+            )
+            await message.answer(format_output_for_mobile(hud), parse_mode="Markdown")
+        except Exception as e:
+            await message.answer(f"❌ HUD failed: {e}")
+
     @dp.message(Command("stats"))
     async def cmd_stats(message: types.Message):
         stats_text = (
