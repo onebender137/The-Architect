@@ -1,6 +1,6 @@
 # TruffleHog ignore file
 # Use this file to ignore specific files or patterns from the secret scan.
 # Each line should be a path or pattern to ignore.
-# Example:
-# path/to/file/to/ignore.py
-# tests/dummy_keys.json
+
+# Confirmed false positives (internal branch IDs)
+.git/FETCH_HEAD

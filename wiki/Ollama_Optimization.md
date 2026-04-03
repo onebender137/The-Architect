@@ -1,18 +1,18 @@
-# 🏎️ Ollama Optimization for Qwen 2.5:7B (Intel XPU)
+# 🏎️ Ollama Optimization for dolphin-mistral:7b (Intel XPU)
 
-To maximize the tokens-per-second (TPS) on the MSI Claw's Intel Arc GPU, use the following configuration for `qwen2.5:7b`.
+To maximize the tokens-per-second (TPS) on the MSI Claw's Intel Arc GPU, use the following configuration for `dolphin-mistral:7b`.
 
 ## 🛠️ Optimal Modelfile Parameters
 
 Create or update your Modelfile with these settings:
 
 ```dockerfile
-FROM qwen2.5:7b
+FROM dolphin-mistral:7b
 
-# Offload all 28 layers to the Intel Arc GPU
+# Offload all layers to the Intel Arc GPU
 PARAMETER num_gpu 999
 
-# Optimize context window for memory efficiency (default 4096, adjust if needed)
+# Optimize context window for memory efficiency (default 4096)
 PARAMETER num_ctx 4096
 
 # Threads should match physical cores for best performance
@@ -26,7 +26,7 @@ PARAMETER top_p 0.9
 
 ## 🌍 Environment Variables
 
-Ensure these are set in your terminal or `.bashrc` before running `ollama serve`:
+These are automatically added to your `.env` by `setup_claw.sh`:
 
 **Key Variables:**
 - `ONEAPI_DEVICE_SELECTOR=level_zero:0`: Forces the Level Zero driver for Intel GPU.
@@ -39,7 +39,7 @@ Ensure these are set in your terminal or `.bashrc` before running `ollama serve`
 
 ## 📊 Expected Performance
 
-With these optimizations, `qwen2.5:7b` (Q4_0) should achieve:
+With these optimizations, `dolphin-mistral:7b` (Q4_0) should achieve:
 - **Prompt Processing:** ~50-80 tokens/sec
 - **Token Generation:** ~25-40 tokens/sec
 

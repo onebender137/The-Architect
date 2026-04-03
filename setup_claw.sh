@@ -20,9 +20,27 @@ echo "✅ WSL2 Environment Confirmed."
 # 2. System Dependencies (APT Heavy Lifting)
 echo "📦 Installing system dependencies..."
 sudo apt update
-sudo apt install -y python3-venv libze-loader clinfo
+sudo apt install -y python3-venv libze-loader clinfo curl
 
-# 3. Environment Management
+# 3. Security: TruffleHog & Git Hooks
+echo "🛡️ Setting up security protocols..."
+if ! command -v trufflehog &> /dev/null; then
+    echo "📥 Installing TruffleHog..."
+    curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+else
+    echo "✅ TruffleHog already installed."
+fi
+
+if [ -f "scripts/pre-push" ]; then
+    echo "⚓ Installing git pre-push hook..."
+    cp scripts/pre-push .git/hooks/pre-push
+    chmod +x .git/hooks/pre-push
+    echo "✅ Pre-push hook active."
+else
+    echo "⚠️ scripts/pre-push not found, skipping hook setup."
+fi
+
+# 4. Environment Management
 VENV_PATH="$HOME/tg_bot_env"
 if [ -d "$VENV_PATH" ]; then
     echo "♻️ Refreshing existing virtual environment at $VENV_PATH..."
@@ -32,7 +50,7 @@ fi
 echo "🏗️ Creating fresh virtual environment at $VENV_PATH..."
 python3 -m venv "$VENV_PATH"
 
-# 4. Python Package Installation
+# 5. Python Package Installation
 echo "🐍 Updating pip and installing standard requirements..."
 "$VENV_PATH/bin/pip" install --upgrade pip
 
@@ -50,7 +68,7 @@ echo "🚀 Installing Intel-optimized AI stack (Torch + IPEX)..."
     intel-extension-for-pytorch==2.3.110+xpu \
     --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
 
-# 5. GPU Driver & AI Stack Verification
+# 6. GPU Driver & AI Stack Verification
 echo "🔍 Verifying GPU Visibility & AI Heartbeat..."
 
 # Check D3D12 Bridge
@@ -79,20 +97,30 @@ except Exception as e:
     print(f'❌ Verification Error: {e}')
 "
 
-# 6. OneAPI/IPEX Configuration (.env)
+# 7. OneAPI/IPEX Configuration (.env)
 echo "📝 Generating local .env configuration..."
-cat <<EOF > .env
+if [ ! -f .env ]; then
+    cat <<EOF > .env
 # --- The Architect: Intel Arc Optimized Environment ---
+BOT_TOKEN="your_telegram_bot_token_here"
+MODEL_NAME="dolphin-mistral:7b"
+OLLAMA_URL="http://172.25.64.1:11434"
+
+# Intel XPU / IPEX Optimization
 ONEAPI_DEVICE_SELECTOR=level_zero:0
 SYCL_ENABLE=1
 OLLAMA_NUM_GPU=999
 ZES_ENABLE_SYSMAN=1
 SYCL_CACHE_PERSISTENT=1
+UR_L0_LOADER_IGNORE_VERSION=1
 EOF
+    echo "✅ Local .env file generated in project root."
+else
+    echo "ℹ️ .env file already exists, skipping generation."
+fi
 
 echo "-------------------------------------------------------"
 echo "🏁 Setup Complete!"
 echo "✅ Virtual Environment: $VENV_PATH"
-echo "✅ Local .env file generated in project root."
 echo "💡 To use: source $VENV_PATH/bin/activate && python coder_agent.py"
 echo "-------------------------------------------------------"

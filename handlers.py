@@ -15,7 +15,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
     async def cmd_start(message: types.Message):
         welcome = (
             "🛠️ **The Architect is Online.**\n\n"
-            f"Engine: Qwen 2.5 7B ({'Intel Arc Accelerated' if device == 'xpu' else 'CPU Mode'})\n"
+            f"Engine: {MODEL_NAME} ({'Intel Arc Accelerated' if device == 'xpu' else 'CPU Mode'})\n"
             "Security: Python Sandbox + Bash Audit active.\n\n"
             "Use `/help` to see my capabilities."
         )
@@ -31,6 +31,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/skills** — List all installed skills\n"
             "**/remove_skill [slug]** — Delete a skill\n"
             "**/commit [message]** — Commit & push changes to GitHub\n"
+            "**/whois** — Display user identification\n"
         )
         await message.answer(help_text, parse_mode="Markdown")
 
@@ -164,6 +165,22 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await status_msg.edit_text(f"✅ {result}")
         except Exception as e:
             await status_msg.edit_text(f"❌ Git operation failed: {e}")
+
+    @dp.message(Command("whois"))
+    async def cmd_whois(message: types.Message):
+        handle = "┼┼Üδ┼│εR"
+        box = (
+            "```text\n"
+            "┌──────────────────────────────────────────┐\n"
+            "│  USER IDENTIFICATION                     │\n"
+            "├──────────────────────────────────────────┤\n"
+            f"│  Handle: {handle}                    │\n"
+            "│  Status: Old-school BBS Hacker       │\n"
+            "│  Access: SYSOP LEVEL                 │\n"
+            "└──────────────────────────────────────────┘\n"
+            "```"
+        )
+        await message.answer(box, parse_mode="MarkdownV2")
 
     @dp.message(F.text)
     async def handle_text(message: types.Message):
