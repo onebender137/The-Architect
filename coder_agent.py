@@ -33,7 +33,7 @@ if not TOKEN:
     logging.error("BOT_TOKEN is missing from .env file!")
     sys.exit(1)
 
-MODEL_NAME = "qwen2.5:7b-instruct-q4_0"
+MODEL_NAME = "dolphin-mistral:7b"
 OLLAMA_URL = "http://172.25.64.1:11434"
 SKILLS_DIR = os.path.join(os.getcwd(), "skills")
 
