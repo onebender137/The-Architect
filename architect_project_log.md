@@ -32,7 +32,7 @@
     * [x] 🧠 **Neural Memory (RAG)**: Persistent local context using ChromaDB.
     * [x] 🤖 **Autonomous Task Agent**: `/build` command loop.
     * [x] 🎛️ **Claw HUD**: Real-time ASCII telemetry dashboard.
+    * [x] 🛠️ **Claw Diagnostics**: Hardware-specific skill for MSI Claw.
 * [x] **Roadmap**:
     3. 🎙️ **Voice-to-Code**: Whisper XPU integration.
     5. 🛠️ **Self-Evolving Skills**: LLM-authored modular skills.
-* [ ] *Next Step:* Build a "Diagnostic Skill" for real-time MSI Claw thermal monitoring.
