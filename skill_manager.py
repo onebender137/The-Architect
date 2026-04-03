@@ -22,6 +22,14 @@ SELF_HEAL_PROMPT = (
     "Error:\n{error}"
 )
 
+BUILD_LOOP_PROMPT = (
+    "You are in an autonomous task execution loop (The Architect /build mode).\n"
+    "Your objective is: {goal}\n\n"
+    "PREVIOUS ATTEMPT OUTPUT:\n{output}\n\n"
+    "State your plan for the next step, then provide the full Python code block to execute.\n"
+    "If the task is fully complete and verified, start your response with '✅ MISSION COMPLETE'."
+)
+
 # ====================== SKILL MANAGER ======================
 class SkillManager:
     @staticmethod

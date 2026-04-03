@@ -70,7 +70,11 @@ Secure Subprocess Sandbox: Executes generated Python code in isolated temporary 
 
 OpenClaw Skill Manager: A modular system to install, audit, and run skills via Telegram.
 
+Claw HUD: A BBS-style ASCII telemetry dashboard for real-time hardware monitoring.
+
 Self-Healing Loop: Automatically monitors execution errors and writes its own hotfixes.
+
+Neural Memory (RAG): Persistent local codebase context using ChromaDB and Intel-optimized embeddings.
 
 📂 Project Structure
 
@@ -81,5 +85,9 @@ launch_architect.bat: The "Special Sauce" launcher for MSI Claw hardware.
 requirements.txt: Python dependencies.
 
 /skills: A persistent directory for your Architect's learned abilities.
+
+memory_manager.py: The Neural Memory (RAG) engine.
+
+chroma_db/: (Hidden/Ignored) The local vector database.
 
 .env: (Hidden) Stores your private bot token.
