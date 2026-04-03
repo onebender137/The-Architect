@@ -3,3 +3,6 @@ ollama
 aiohttp
 pyfiglet
 python-dotenv
+chromadb
+sentence-transformers
+torch

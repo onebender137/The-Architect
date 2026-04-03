@@ -7,4 +7,5 @@ venv/
 *.deb
 .vscode/
 .idea/
+chroma_db/
 *.log

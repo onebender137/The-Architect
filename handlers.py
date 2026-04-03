@@ -13,7 +13,7 @@ from utils import format_output_for_mobile
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context):
+def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager):
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
         try:
@@ -52,6 +52,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/promote [script]** — Move /library script to /skills\n"
             "**/commit [msg]** — Commit & push changes\n"
             "**/scan** — Generate project file tree\n"
+            "**/reindex** — Refresh neural memory (RAG)\n"
             "**/ingest [file]** — Read file into context\n"
             "**/top** — Monitor real-time system stats\n"
             "**/stats** — Engine & System info\n"
@@ -68,6 +69,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             f"**Device**: `{'Intel Arc XPU' if device == 'xpu' else 'CPU'}`\n"
             f"**Interface**: `Mobile Optimized (50-char)`\n"
             f"**Skills**: `{len(SkillManager.list_skills())} loaded`\n"
+            f"**Neural Memory**: `Active` (ChromaDB)\n"
             "**Access**: `SYSOP`"
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
@@ -136,6 +138,44 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await message.answer(format_output_for_mobile(summary), parse_mode="Markdown")
         except Exception as e:
             await message.answer(f"❌ Scan failed: {e}")
+
+    @dp.message(Command("reindex"))
+    async def cmd_reindex(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "typing")
+        status_msg = await message.answer("🧠 **Neural Memory: Reindexing codebase...**")
+
+        def index_files():
+            ignore_dirs = [".git", "__pycache__", "venv", ".venv", "chroma_db"]
+            indexed_count = 0
+            tasks = []
+
+            for root, dirs, files in os.walk("."):
+                dirs[:] = [d for d in dirs if d not in ignore_dirs]
+                for f in files:
+                    if f.endswith(('.py', '.md', '.sh', '.txt', '.bat', '.json')):
+                        filepath = os.path.join(root, f)
+                        if os.path.getsize(filepath) < 500000:
+                            try:
+                                with open(filepath, "r", encoding="utf-8") as file:
+                                    content = file.read()
+                                    tasks.append((content, {"path": filepath}, filepath))
+                            except Exception:
+                                continue
+            return tasks
+
+        try:
+            await memory_manager.clear_memory()
+            # Run file collection in a thread to avoid blocking
+            indexing_tasks = await asyncio.to_thread(index_files)
+
+            count = 0
+            for content, metadata, doc_id in indexing_tasks:
+                await memory_manager.add_document(text=content, metadata=metadata, doc_id=doc_id)
+                count += 1
+
+            await status_msg.edit_text(format_output_for_mobile(f"✅ **Reindex Complete.**\nIndexed `{count}` files into neural memory."), parse_mode="Markdown")
+        except Exception as e:
+            await status_msg.edit_text(f"❌ Reindex failed: {e}")
 
     @dp.message(Command("ingest"))
     async def cmd_ingest(message: types.Message, command: CommandObject):
@@ -351,14 +391,30 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
 
     @dp.message(F.text)
     async def handle_text(message: types.Message):
-        if message.text.startswith('/'):
+        if not message.text or message.text.startswith('/'):
             return  # Let command handlers take care of commands
 
         history = get_context(message.from_user.id)
         await bot.send_chat_action(message.chat.id, "typing")
 
+        # RAG: Search neural memory for context
+        relevant_context = ""
+        memory_results = await memory_manager.search(message.text, n_results=2)
+        if memory_results and memory_results['documents']:
+            docs = memory_results['documents'][0]
+            metas = memory_results['metadatas'][0]
+            context_blocks = []
+            for i in range(len(docs)):
+                path = metas[i].get('path', 'unknown')
+                context_blocks.append(f"FILE: {path}\n---\n{docs[i]}\n---")
+            relevant_context = "\n\n".join(context_blocks)
+
+        system_prompt = SYSTEM_PROMPT_BASE
+        if relevant_context:
+            system_prompt += f"\n\nRELEVANT PROJECT CONTEXT:\n{relevant_context}\n"
+
         messages = [
-            {'role': 'system', 'content': SYSTEM_PROMPT_BASE},
+            {'role': 'system', 'content': system_prompt},
             *list(history),
             {'role': 'user', 'content': message.text}
         ]
