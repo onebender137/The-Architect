@@ -10,10 +10,20 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from skill_manager import SkillManager, run_sandboxed_python, SYSTEM_PROMPT_BASE, SELF_HEAL_PROMPT
 from git_utils import git_manager
 from utils import format_output_for_mobile
+from memory_manager import memory_manager
 
 logger = logging.getLogger(__name__)
 
 def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context):
+    @dp.message(Command("reindex"))
+    async def cmd_reindex(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "typing")
+        try:
+            count = await memory_manager.index_project()
+            await message.answer(f"🧠 **Neural Memory Updated.**\nIndexed `{count}` chunks from the project.", parse_mode="Markdown")
+        except Exception as e:
+            await message.answer(f"❌ Reindexing failed: {e}")
+
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
         try:
@@ -53,6 +63,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/commit [msg]** — Commit & push changes\n"
             "**/scan** — Generate project file tree\n"
             "**/ingest [file]** — Read file into context\n"
+            "**/reindex** — Update Neural Memory (RAG)\n"
             "**/top** — Monitor real-time system stats\n"
             "**/stats** — Engine & System info\n"
             "**/logs** — View bot runtime logs\n"
@@ -68,6 +79,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             f"**Device**: `{'Intel Arc XPU' if device == 'xpu' else 'CPU'}`\n"
             f"**Interface**: `Mobile Optimized (50-char)`\n"
             f"**Skills**: `{len(SkillManager.list_skills())} loaded`\n"
+            f"**Memory**: `Neural RAG Enabled`\n"
             "**Access**: `SYSOP`"
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
@@ -357,8 +369,15 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         history = get_context(message.from_user.id)
         await bot.send_chat_action(message.chat.id, "typing")
 
+        # RAG: Retrieve context from memory (async)
+        project_context = await memory_manager.search(message.text)
+
+        system_prompt = SYSTEM_PROMPT_BASE
+        if project_context:
+            system_prompt += f"\n\nNEURAL MEMORY (Relevant Project Context):\n{project_context}"
+
         messages = [
-            {'role': 'system', 'content': SYSTEM_PROMPT_BASE},
+            {'role': 'system', 'content': system_prompt},
             *list(history),
             {'role': 'user', 'content': message.text}
         ]
