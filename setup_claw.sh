@@ -20,7 +20,7 @@ echo "✅ WSL2 Environment Confirmed."
 # 2. System Dependencies (APT Heavy Lifting)
 echo "📦 Installing system dependencies..."
 sudo apt update
-sudo apt install -y python3-venv libze-loader clinfo
+sudo apt install -y python3-venv libze-loader clinfo intel-gpu-tools
 
 # 3. Environment Management
 VENV_PATH="$HOME/tg_bot_env"
@@ -45,13 +45,19 @@ fi
 echo "🚀 Installing Intel-optimized AI stack (Torch + IPEX)..."
 # Using Intel's XPU-specific stable release URL
 "$VENV_PATH/bin/pip" install torch==2.3.1.post0+xpu \
-    torchvision==0.18.1.post0+xpu \
-    torchaudio==2.3.1.post0+xpu \
     intel-extension-for-pytorch==2.3.110+xpu \
     --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
 
 # 5. GPU Driver & AI Stack Verification
 echo "🔍 Verifying GPU Visibility & AI Heartbeat..."
+
+# Check intel_gpu_top
+if command -v intel_gpu_top >/dev/null 2>&1; then
+    echo "✅ intel_gpu_top detected."
+    intel_gpu_top -s 1 -n 1 | grep -E "Render/3D|Video|Blitter" || true
+else
+    echo "⚠️ intel_gpu_top not found. Ensure 'intel-gpu-tools' is installed."
+fi
 
 # Check D3D12 Bridge
 if [ -e /dev/dxg ]; then

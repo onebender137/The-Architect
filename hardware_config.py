@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 # ====================== HARDWARE SETUP (MSI Claw / Intel Arc XPU) ======================
 def setup_hardware():
-    os.environ["ONEAPI_DEVICE_SELECTOR"] = "level_zero:gpu"
+    os.environ["ONEAPI_DEVICE_SELECTOR"] = "level_zero:0"
     os.environ["UR_L0_LOADER_IGNORE_VERSION"] = "1"
 
     wsl_path = "/usr/lib/wsl/lib"
