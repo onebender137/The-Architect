@@ -3,6 +3,7 @@ import logging
 import re
 import subprocess
 import os
+import base64
 from aiogram import types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -13,6 +14,23 @@ from utils import format_output_for_mobile
 logger = logging.getLogger(__name__)
 
 def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context):
+    @dp.message(Command("logs"))
+    async def cmd_logs(message: types.Message):
+        try:
+            log_path = "architect.log"
+            if not os.path.exists(log_path):
+                await message.answer("❌ Log file not found.")
+                return
+
+            res = subprocess.run(["tail", "-n", "10", log_path], capture_output=True, text=True)
+            output = res.stdout.strip()
+            if not output:
+                output = "Log is empty."
+
+            await message.answer(format_output_for_mobile(f"📝 **Latest Logs:**\n```text\n{output}\n```"), parse_mode="Markdown")
+        except Exception as e:
+            await message.answer(f"❌ Failed to read logs: {e}")
+
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message):
         welcome = (
@@ -27,15 +45,18 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
     async def cmd_help(message: types.Message):
         help_text = (
             "🏗️ **Architect Command Menu**\n\n"
-            "**/run [code]** — Run Python in secure sandbox with self-healing\n"
-            "**/install_skill [name]** — Add a new modular skill\n"
-            "**/run_skill [slug]** — Execute a saved bash skill\n"
+            "**/run [code]** — Run Python in secure sandbox\n"
+            "**/install_skill [name]** — Add a modular skill\n"
+            "**/run_skill [slug]** — Execute a saved skill\n"
             "**/skills** — List all installed skills\n"
-            "**/remove_skill [slug]** — Delete a skill\n"
-            "**/commit [message]** — Commit & push changes to GitHub\n"
-            "**/scan** — Generate project file tree summary\n"
+            "**/promote [script]** — Move /library script to /skills\n"
+            "**/commit [msg]** — Commit & push changes\n"
+            "**/scan** — Generate project file tree\n"
             "**/ingest [file]** — Read file into context\n"
-            "**/stats** — Engine & System Stats\n"
+            "**/top** — Monitor real-time system stats\n"
+            "**/stats** — Engine & System info\n"
+            "**/logs** — View bot runtime logs\n"
+            "**/whois** — Display user identification\n"
         )
         await message.answer(format_output_for_mobile(help_text), parse_mode="Markdown")
 
@@ -50,6 +71,50 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**Access**: `SYSOP`"
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
+
+    @dp.message(Command("whois"))
+    async def cmd_whois(message: types.Message):
+        handle = "┬┬Üδ┬│εR"
+        box = (
+            "```text\n"
+            "┌──────────────────────────────────────────┐\n"
+            "│  USER IDENTIFICATION                     │\n"
+            "├──────────────────────────────────────────┤\n"
+            f"│  Handle: {handle}                    │\n"
+            "│  Status: Old-school BBS Hacker       │\n"
+            "│  Access: SYSOP LEVEL                 │\n"
+            "└──────────────────────────────────────────┘\n"
+            "```"
+        )
+        await message.answer(format_output_for_mobile(box), parse_mode="Markdown")
+
+    @dp.message(Command("top"))
+    async def cmd_top(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "typing")
+        try:
+            # Simple top-like output using ps
+            # We use a list to avoid shell=True
+            res = subprocess.run(
+                ["ps", "-eo", "pid,ppid,cmd,%mem,%cpu", "--sort=-%cpu"],
+                capture_output=True, text=True, timeout=5
+            )
+            # Take only the first 10 lines
+            output = "\n".join(res.stdout.strip().splitlines()[:10])
+
+            # Also get load average and memory
+            load_avg = ""
+            if os.path.exists("/proc/loadavg"):
+                try:
+                    with open("/proc/loadavg", "r") as f:
+                        load_avg_vals = f.read().split()[:3]
+                    load_avg = f"Load: {' '.join(load_avg_vals)}"
+                except Exception:
+                    pass
+
+            result = f"📊 **Top Processes:**\n```text\n{output}\n```\n{load_avg}"
+            await message.answer(format_output_for_mobile(result), parse_mode="Markdown")
+        except Exception as e:
+            await message.answer(f"❌ Top failed: {e}")
 
     @dp.message(Command("scan"))
     async def cmd_scan(message: types.Message):
@@ -119,6 +184,55 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await message.answer(f"🗑️ Skill `{slug}` removed successfully.")
         else:
             await message.answer(f"❌ Skill `{slug}` not found.")
+
+    @dp.message(Command("promote"))
+    async def cmd_promote(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("⚠️ Usage: `/promote [script_name]`")
+            return
+
+        # Security: Prevent path traversal by only taking the basename
+        script_name = os.path.basename(command.args.strip())
+        library_path = os.path.abspath(os.path.join("library", script_name))
+
+        # Further security: Ensure the path is still within the library directory
+        if not library_path.startswith(os.path.abspath("library")):
+            await message.answer("❌ Invalid script name.")
+            return
+
+        if not os.path.exists(library_path):
+            await message.answer(f"❌ Script `{script_name}` not found in `/library`.")
+            return
+
+        # Check if it's a directory with SKILL.md or a single file
+        if os.path.isdir(library_path):
+            skill_file = os.path.join(library_path, "SKILL.md")
+            if not os.path.exists(skill_file):
+                await message.answer(f"❌ `{script_name}` is a directory but has no `SKILL.md`.")
+                return
+            with open(skill_file, "r", encoding="utf-8") as f:
+                content = f.read()
+        else:
+            # If it's a file, we wrap it in a bash block as a basic skill
+            with open(library_path, "rb") as f:
+                file_content_b64 = base64.b64encode(f.read()).decode()
+
+            content = (
+                f"# {script_name}\n\n"
+                "```bash\n"
+                "# Run the script via base64 to avoid delimiter issues\n"
+                "TMP_SCRIPT=$(mktemp)\n"
+                f"echo '{file_content_b64}' | base64 -d > \"$TMP_SCRIPT\"\n"
+                "bash \"$TMP_SCRIPT\"\n"
+                "rm \"$TMP_SCRIPT\"\n"
+                "```"
+            )
+
+        success, result = await SkillManager.install_skill(script_name, content)
+        if success:
+            await message.answer(f"✅ Promoted `{script_name}` to modular skill: `{result}`.")
+        else:
+            await message.answer(f"❌ Promotion failed: {result}")
 
     @dp.message(Command("run_skill"))
     async def cmd_run_skill(message: types.Message):
