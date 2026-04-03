@@ -81,7 +81,29 @@ except Exception as e:
 
 # 6. OneAPI/IPEX Configuration (.env)
 echo "📝 Generating local .env configuration..."
-cat <<EOF > .env
+if [ -f .env ]; then
+    echo "⚠️  .env already exists. Merging new Arc variables while preserving existing config..."
+    # Append Arc variables if they don't exist
+    for var in ONEAPI_DEVICE_SELECTOR SYCL_ENABLE OLLAMA_NUM_GPU ZES_ENABLE_SYSMAN SYCL_CACHE_PERSISTENT MODEL_NAME OLLAMA_URL; do
+        if ! grep -q "^$var=" .env; then
+            case $var in
+                ONEAPI_DEVICE_SELECTOR) echo "ONEAPI_DEVICE_SELECTOR=level_zero:0" >> .env ;;
+                SYCL_ENABLE) echo "SYCL_ENABLE=1" >> .env ;;
+                OLLAMA_NUM_GPU) echo "OLLAMA_NUM_GPU=999" >> .env ;;
+                ZES_ENABLE_SYSMAN) echo "ZES_ENABLE_SYSMAN=1" >> .env ;;
+                SYCL_CACHE_PERSISTENT) echo "SYCL_CACHE_PERSISTENT=1" >> .env ;;
+                MODEL_NAME) echo "MODEL_NAME=dolphin-mistral:7b" >> .env ;;
+                OLLAMA_URL) echo "OLLAMA_URL=http://172.25.64.1:11434" >> .env ;;
+            esac
+        fi
+    done
+else
+    cat <<EOF > .env
+# --- The Architect: Telegram Bot Configuration ---
+BOT_TOKEN="your bot token goes here"
+MODEL_NAME=dolphin-mistral:7b
+OLLAMA_URL=http://172.25.64.1:11434
+
 # --- The Architect: Intel Arc Optimized Environment ---
 ONEAPI_DEVICE_SELECTOR=level_zero:0
 SYCL_ENABLE=1
@@ -89,6 +111,7 @@ OLLAMA_NUM_GPU=999
 ZES_ENABLE_SYSMAN=1
 SYCL_CACHE_PERSISTENT=1
 EOF
+fi
 
 echo "-------------------------------------------------------"
 echo "🏁 Setup Complete!"

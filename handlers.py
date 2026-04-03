@@ -153,6 +153,22 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         else:
             await callback.message.edit_text(f"❌ {result}")
 
+    @dp.message(Command("whois"))
+    async def cmd_whois(message: types.Message):
+        handle = "┼┼Üδ┼│εR"
+        box = (
+            "```text\n"
+            "┌──────────────────────────────────────────┐\n"
+            "│  USER IDENTIFICATION                     │\n"
+            "├──────────────────────────────────────────┤\n"
+            f"│  Handle: {handle}                    │\n"
+            "│  Status: Old-school BBS Hacker       │\n"
+            "│  Access: SYSOP LEVEL                 │\n"
+            "└──────────────────────────────────────────┘\n"
+            "```"
+        )
+        await message.answer(box, parse_mode="MarkdownV2")
+
     @dp.message(Command("commit"))
     async def cmd_commit(message: types.Message, command: CommandObject):
         commit_msg = command.args or "Update by Jules"
