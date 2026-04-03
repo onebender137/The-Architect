@@ -13,7 +13,7 @@ from utils import format_output_for_mobile
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager):
+def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager, voice_processor):
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
         try:
@@ -384,7 +384,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
                 code = code_match.group(1).strip()
                 await message.answer(format_output_for_mobile(f"⚙️ **Iteration {i+1}: Executing step...**\n\n{ans}"), parse_mode="Markdown")
 
-                success, output = await run_sandboxed_python(code)
+                # Use persistent workspace for /build loop
+                success, output = await run_sandboxed_python(code, persistent=True)
                 current_output = output
 
                 if not success:
@@ -536,3 +537,34 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         except Exception as e:
             logger.error(f"Ollama error: {e}")
             await message.answer("⚠️ Ollama connection error. Make sure `ollama serve` is running.")
+
+    @dp.message(F.voice)
+    async def handle_voice(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "record_voice")
+
+        # Create a temporary file for the voice message
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        local_path = f"temp_{file_id}.ogg"
+
+        await bot.download_file(file_path, local_path)
+
+        # Transcribe using VoiceProcessor
+        transcription = await asyncio.to_thread(voice_processor.transcribe, local_path)
+
+        # Cleanup original ogg
+        if os.path.exists(local_path):
+            os.remove(local_path)
+
+        if not transcription:
+            await message.answer("❌ Transcription failed. Please try again.")
+            return
+
+        # Show transcription to user
+        await message.answer(f"🎤 **Voice Input Detected:**\n_{transcription}_", parse_mode="Markdown")
+
+        # Process as a normal text message
+        # We manually call handle_text logic or just wrap the message
+        message.text = transcription
+        await handle_text(message)

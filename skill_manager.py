@@ -77,9 +77,14 @@ class SkillManager:
 
 
 # ====================== EXECUTION ENGINES ======================
-async def run_sandboxed_python(code: str) -> tuple[bool, str]:
-    temp_dir = tempfile.mkdtemp()
-    temp_file = os.path.join(temp_dir, "task.py")
+async def run_sandboxed_python(code: str, persistent: bool = False) -> tuple[bool, str]:
+    if persistent:
+        target_dir = os.path.join(os.getcwd(), "workspace")
+        os.makedirs(target_dir, exist_ok=True)
+    else:
+        target_dir = tempfile.mkdtemp()
+
+    temp_file = os.path.join(target_dir, "task.py")
 
     try:
         with open(temp_file, "w", encoding="utf-8") as f:
@@ -90,7 +95,7 @@ async def run_sandboxed_python(code: str) -> tuple[bool, str]:
             temp_file,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=temp_dir,
+            cwd=target_dir,
             env=os.environ.copy(),  # Pass XPU environment
         )
 
@@ -106,4 +111,5 @@ async def run_sandboxed_python(code: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"❌ Sandbox Error: {str(e)}"
     finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        if not persistent:
+            shutil.rmtree(target_dir, ignore_errors=True)

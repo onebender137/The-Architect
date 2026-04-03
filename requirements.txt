@@ -6,3 +6,5 @@ python-dotenv
 chromadb
 sentence-transformers
 torch
+openai-whisper
+pydub

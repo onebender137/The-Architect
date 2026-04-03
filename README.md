@@ -76,6 +76,10 @@ Self-Healing Loop: Automatically monitors execution errors and writes its own ho
 
 Neural Memory (RAG): Persistent local codebase context using ChromaDB and Intel-optimized embeddings.
 
+Voice-to-Code: Local transcription via Whisper XPU for hands-free coding operations.
+
+Persistent Workspace: Dedicated `/workspace` directory for autonomous task state and persistence.
+
 📂 Project Structure
 
 coder_agent.py: The core asynchronous Telegram bot and logic engine.
@@ -88,6 +92,10 @@ requirements.txt: Python dependencies.
 
 memory_manager.py: The Neural Memory (RAG) engine.
 
+voice_utils.py: Local Whisper-based Voice-to-Code interface.
+
 chroma_db/: (Hidden/Ignored) The local vector database.
+
+workspace/: (Hidden/Ignored) Persistent directory for autonomous build tasks.
 
 .env: (Hidden) Stores your private bot token.
