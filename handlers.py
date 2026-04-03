@@ -7,7 +7,7 @@ import base64
 from aiogram import types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from skill_manager import SkillManager, run_sandboxed_python, SYSTEM_PROMPT_BASE, SELF_HEAL_PROMPT
+from skill_manager import SkillManager, run_sandboxed_python, SYSTEM_PROMPT_BASE, SELF_HEAL_PROMPT, BUILD_LOOP_PROMPT
 from git_utils import git_manager
 from utils import format_output_for_mobile
 
@@ -53,6 +53,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/commit [msg]** — Commit & push changes\n"
             "**/scan** — Generate project file tree\n"
             "**/reindex** — Refresh neural memory (RAG)\n"
+            "**/build [task]** — Start autonomous build loop\n"
             "**/ingest [file]** — Read file into context\n"
             "**/top** — Monitor real-time system stats\n"
             "**/stats** — Engine & System info\n"
@@ -292,6 +293,59 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await message.answer("❌ Skill execution timed out (20s).")
         except Exception as e:
             await message.answer(f"❌ Failed to run skill: {e}")
+
+    @dp.message(Command("build"))
+    async def cmd_build(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("🏗️ **Autonomous Build Mode**\nUsage: `/build [task objective]`")
+            return
+
+        goal = command.args.strip()
+        status_msg = await message.answer(f"🏗️ **The Architect: Starting Autonomous Build Loop...**\nObjective: `{goal}`")
+
+        current_output = "No previous attempts."
+        max_iterations = 5
+
+        for i in range(max_iterations):
+            await bot.send_chat_action(message.chat.id, "typing")
+
+            prompt = BUILD_LOOP_PROMPT.format(goal=goal, output=current_output)
+            messages = [
+                {'role': 'system', 'content': SYSTEM_PROMPT_BASE},
+                {'role': 'user', 'content': prompt}
+            ]
+
+            try:
+                res = await ollama_client.chat(model=MODEL_NAME, messages=messages)
+                ans = res['message']['content']
+
+                # Check for completion
+                if "✅ MISSION COMPLETE" in ans:
+                    await message.answer(format_output_for_mobile(f"🏆 **Task Finalized!**\n\n{ans}"), parse_mode="Markdown")
+                    break
+
+                # Extract code and execute
+                code_match = re.search(r"```python\n(.*?)\n```", ans, re.DOTALL)
+                if not code_match:
+                    await message.answer(format_output_for_mobile(f"⚠️ **Wait Step:**\n{ans}"), parse_mode="Markdown")
+                    break # Break if no code is provided and not finished
+
+                code = code_match.group(1).strip()
+                await message.answer(format_output_for_mobile(f"⚙️ **Iteration {i+1}: Executing step...**\n\n{ans}"), parse_mode="Markdown")
+
+                success, output = await run_sandboxed_python(code)
+                current_output = output
+
+                if not success:
+                    await message.answer(format_output_for_mobile(f"❌ **Step Failed:**\n```text\n{output}\n```"), parse_mode="Markdown")
+                else:
+                    await message.answer(format_output_for_mobile(f"✅ **Step Result:**\n```text\n{output}\n```"), parse_mode="Markdown")
+
+            except Exception as e:
+                await message.answer(f"❌ Build loop error: {e}")
+                break
+        else:
+            await message.answer("🏁 **Max iterations (5) reached. Build loop paused.**")
 
     @dp.message(Command("run"))
     async def cmd_run_python(message: types.Message):

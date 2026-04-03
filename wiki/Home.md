@@ -8,6 +8,7 @@ The Architect is an elite, local-first coding assistant and OpenClaw skill manag
 - **Secure Subprocess Sandbox:** Executes generated Python code in isolated temporary directories.
 - **OpenClaw Skill Management:** A modular system to install, audit, and run skills via Telegram.
 - **Self-Healing Loop:** Automatically monitors execution errors and writes its own hotfixes.
+- **Neural Memory (RAG):** Persistent local context from the codebase using ChromaDB and Intel-optimized embeddings.
 
 ## 📖 Documentation Sections
 
@@ -19,6 +20,9 @@ A technical deep dive into how The Architect safely executes code using isolated
 
 ### [🛠️ OpenClaw Skill Management](OpenClaw-Skill-Management)
 A comprehensive guide to the modular skill system, including how to install, manage, and run custom skills via Telegram.
+
+### [🧠 Neural Memory (RAG) Architecture](Neural-Memory-RAG)
+Technical details on how The Architect stores, retrieves, and utilizes project-wide context using ChromaDB.
 
 ---
 

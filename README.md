@@ -72,6 +72,8 @@ OpenClaw Skill Manager: A modular system to install, audit, and run skills via T
 
 Self-Healing Loop: Automatically monitors execution errors and writes its own hotfixes.
 
+Neural Memory (RAG): Persistent local codebase context using ChromaDB and Intel-optimized embeddings.
+
 📂 Project Structure
 
 coder_agent.py: The core asynchronous Telegram bot and logic engine.
@@ -81,5 +83,9 @@ launch_architect.bat: The "Special Sauce" launcher for MSI Claw hardware.
 requirements.txt: Python dependencies.
 
 /skills: A persistent directory for your Architect's learned abilities.
+
+memory_manager.py: The Neural Memory (RAG) engine.
+
+chroma_db/: (Hidden/Ignored) The local vector database.
 
 .env: (Hidden) Stores your private bot token.
