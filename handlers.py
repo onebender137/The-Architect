@@ -15,7 +15,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
     async def cmd_start(message: types.Message):
         welcome = (
             "🛠️ **The Architect is Online.**\n\n"
-            f"Engine: Qwen 2.5 7B ({'Intel Arc Accelerated' if device == 'xpu' else 'CPU Mode'})\n"
+            f"Engine: {MODEL_NAME} ({'Intel Arc Accelerated' if device == 'xpu' else 'CPU Mode'})\n"
             "Security: Python Sandbox + Bash Audit active.\n\n"
             "Use `/help` to see my capabilities."
         )

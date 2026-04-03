@@ -4,9 +4,11 @@ An elite, local-first coding assistant and OpenClaw skill manager specifically e
 
 This project bridges the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development, providing a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
 
-🏎️ Hardware Optimization (Intel Arc & IPEX)
+🏎️ Hardware & Model (Intel Arc & Dolphin-Mistral)
 
-The Architect is configured to leverage the Intel Xᵉ-LPG graphics found in the Core Ultra 7. The provided launcher utilizes Intel IPEX (Intel Extension for PyTorch/Ollama) optimizations via these critical environment variables:
+The Architect has been upgraded to **Dolphin-Mistral 7B** to provide superior coding logic and reduced output restrictions. It is fully optimized for the Intel Xᵉ-LPG graphics (8 Xe-cores) found in the MSI Claw's Core Ultra 7 155H.
+
+The system utilizes **Intel IPEX** (Intel Extension for PyTorch) optimizations to ensure all inference occurs on the XPU:
 
 ONEAPI_DEVICE_SELECTOR=level_zero:0: Forces execution on the Arc iGPU.
 
