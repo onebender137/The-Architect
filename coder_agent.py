@@ -13,6 +13,7 @@ from ollama import AsyncClient
 from hardware_config import setup_hardware
 from handlers import register_handlers
 from memory_manager import MemoryManager
+from voice_utils import VoiceProcessor
 
 # ====================== CONFIGURATION ======================
 load_dotenv()
@@ -56,13 +57,16 @@ pending_skills: dict[str, dict] = {}
 # Initialize Neural Memory
 memory_manager = MemoryManager()
 
+# Initialize Voice Processor
+voice_processor = VoiceProcessor(device=device)
+
 def get_context(user_id: int) -> deque:
     if user_id not in user_history:
         user_history[user_id] = deque(maxlen=15)
     return user_history[user_id]
 
 # Register all handlers
-register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager)
+register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager, voice_processor)
 
 # ====================== MAIN ======================
 async def main():

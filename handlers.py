@@ -13,7 +13,7 @@ from utils import format_output_for_mobile
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager):
+def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager, voice_processor):
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
         try:
@@ -122,6 +122,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             f"**Interface**: `Mobile Optimized (50-char)`\n"
             f"**Skills**: `{len(SkillManager.list_skills())} loaded`\n"
             f"**Neural Memory**: `Active` (ChromaDB)\n"
+            f"**Voice Interface**: `Whisper (Base)`\n"
             "**Access**: `SYSOP`"
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
@@ -494,17 +495,46 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         except Exception as e:
             await status_msg.edit_text(f"❌ Git operation failed: {e}")
 
+    @dp.message(F.voice)
+    async def handle_voice(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "record_audio")
+
+        voice = message.voice
+        file_info = await bot.get_file(voice.file_id)
+        file_path = f"temp_voice_{voice.file_id}.ogg"
+
+        await bot.download_file(file_info.file_path, file_path)
+
+        status_msg = await message.answer("🎙️ **Transcribing local voice...**")
+
+        # Transcribe in separate thread to avoid blocking
+        transcribed_text = await asyncio.to_thread(voice_processor.transcribe, file_path)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        if not transcribed_text:
+            await status_msg.edit_text("❌ Transcription failed.")
+            return
+
+        await status_msg.edit_text(format_output_for_mobile(f"🎙️ **Transcribed:**\n_{transcribed_text}_"), parse_mode="Markdown")
+
+        # Process the transcription as text
+        await process_message_text(message, transcribed_text)
+
     @dp.message(F.text)
     async def handle_text(message: types.Message):
         if not message.text or message.text.startswith('/'):
             return  # Let command handlers take care of commands
+        await process_message_text(message, message.text)
 
+    async def process_message_text(message: types.Message, text: str):
         history = get_context(message.from_user.id)
         await bot.send_chat_action(message.chat.id, "typing")
 
         # RAG: Search neural memory for context
         relevant_context = ""
-        memory_results = await memory_manager.search(message.text, n_results=2)
+        memory_results = await memory_manager.search(text, n_results=2)
         if memory_results and memory_results['documents']:
             docs = memory_results['documents'][0]
             metas = memory_results['metadatas'][0]
@@ -521,7 +551,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         messages = [
             {'role': 'system', 'content': system_prompt},
             *list(history),
-            {'role': 'user', 'content': message.text}
+            {'role': 'user', 'content': text}
         ]
 
         try:
@@ -529,7 +559,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             ans = res['message']['content']
 
             # Update history
-            history.append({'role': 'user', 'content': message.text})
+            history.append({'role': 'user', 'content': text})
             history.append({'role': 'assistant', 'content': ans})
 
             await message.answer(format_output_for_mobile(ans), parse_mode="Markdown")
