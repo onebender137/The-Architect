@@ -1,5 +1,4 @@
 import os
-import torch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,9 +12,14 @@ def setup_hardware():
     if wsl_path not in os.environ.get("LD_LIBRARY_PATH", ""):
         os.environ["LD_LIBRARY_PATH"] = f"{wsl_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
-    # Detect Intel XPU
-    device = "xpu" if torch.xpu.is_available() else "cpu"
-    logger.info(f"Jules is waking up on: {device}")
-    if device == "xpu":
-        logger.info(f"Hardware Verified: {torch.xpu.get_device_name(0)}")
-    return device
+    try:
+        import torch
+        # Detect Intel XPU
+        device = "xpu" if torch.xpu.is_available() else "cpu"
+        logger.info(f"Jules is waking up on: {device}")
+        if device == "xpu":
+            logger.info(f"Hardware Verified: {torch.xpu.get_device_name(0)}")
+        return device
+    except ImportError:
+        logger.warning("torch not found, defaulting to CPU mode.")
+        return "cpu"
