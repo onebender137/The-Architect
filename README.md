@@ -6,7 +6,13 @@ This project bridges the gap between Windows-based Intel Arc GPU acceleration an
 
 🏎️ Hardware & Model (Intel Arc & Dolphin-Mistral)
 
-The Architect has been upgraded to **Dolphin-Mistral 7B** to provide superior coding logic and reduced output restrictions. It is fully optimized for the Intel Xᵉ-LPG graphics (8 Xe-cores) found in the MSI Claw's Core Ultra 7 155H.
+The Architect has transitioned to **Dolphin-Mistral 7B**, a significant upgrade that enhances coding logic and conversational depth. This model is fully optimized for the Intel Xᵉ-LPG graphics (8 Xe-cores) found in the MSI Claw's Core Ultra 7 155H.
+
+**Key Benefits of Dolphin-Mistral:**
+
+*   **Unrestricted Outputs:** Provides maximum flexibility for complex and uncensored use cases, ensuring the agent never refuses a legitimate technical request.
+*   **Higher Instruction Compliance:** Adheres strictly to complex system prompts and directives, resulting in more accurate code generation and tool usage.
+*   **Improved Dialogue Threading:** Maintains superior context across multi-turn conversations, allowing for seamless flow during deep debugging or architectural planning sessions.
 
 The system utilizes **Intel IPEX** (Intel Extension for PyTorch) optimizations to ensure all inference occurs on the XPU:
 
