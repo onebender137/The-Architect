@@ -12,6 +12,7 @@ from ollama import AsyncClient
 
 from hardware_config import setup_hardware
 from handlers import register_handlers
+from memory_manager import MemoryManager
 
 # ====================== CONFIGURATION ======================
 load_dotenv()
@@ -52,6 +53,8 @@ device = setup_hardware()
 user_history: dict[int, deque] = {}
 pending_skills: dict[str, dict] = {}
 
+# Initialize Neural Memory
+memory_manager = MemoryManager()
 
 def get_context(user_id: int) -> deque:
     if user_id not in user_history:
@@ -59,7 +62,7 @@ def get_context(user_id: int) -> deque:
     return user_history[user_id]
 
 # Register all handlers
-register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context)
+register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager)
 
 # ====================== MAIN ======================
 async def main():
