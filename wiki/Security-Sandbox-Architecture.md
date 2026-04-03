@@ -6,7 +6,7 @@ The Architect is designed with a "Local-First" approach, ensuring that your code
 
 ## 🛠️ Technical Implementation
 
-The Architect's code execution engine is implemented in the `run_sandboxed_python` function in `coder_agent.py`. It uses a combination of Python's standard library modules to achieve isolation.
+The Architect's code execution engine is implemented in the `run_sandboxed_python` function in `skill_manager.py`. It uses a combination of Python's standard library modules to achieve isolation.
 
 ### 1. Isolation via `tempfile`
 
@@ -28,21 +28,22 @@ finally:
 
 ### 2. Execution via `subprocess`
 
-The script is executed using `subprocess.run()`, which launches a new Python process separate from the main Telegram bot.
+The script is executed using `asyncio.create_subprocess_exec`, which launches a new Python process separate from the main Telegram bot.
 
 ```python
-process = subprocess.run(
-    [sys.executable, temp_file],
-    capture_output=True,
-    text=True,
-    timeout=10,
-    cwd=temp_dir
+process = await asyncio.create_subprocess_exec(
+    sys.executable,
+    temp_file,
+    stdout=asyncio.subprocess.PIPE,
+    stderr=asyncio.subprocess.PIPE,
+    cwd=temp_dir,
+    env=os.environ.copy()
 )
 ```
 
 **Resource Management:**
-- **Timeout Protection:** The `timeout=10` parameter prevents scripts from hanging or consuming CPU resources indefinitely.
-- **Output Buffering:** `capture_output=True` allows the bot to capture and return only the `stdout` and `stderr` of the script, rather than letting it output directly to the bot's logs.
+- **Timeout Protection:** An `asyncio.wait_for` wrapper prevents scripts from hanging or consuming CPU resources indefinitely (default 15 seconds).
+- **Output Buffering:** `stdout` and `stderr` are captured and returned to the bot.
 - **Restricted CWD:** The `cwd=temp_dir` ensures the script's root is the temporary directory, not the main project folder.
 
 ### 3. Bash Safety Audits

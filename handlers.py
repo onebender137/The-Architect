@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import subprocess
+import os
 from aiogram import types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -31,6 +32,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/skills** — List all installed skills\n"
             "**/remove_skill [slug]** — Delete a skill\n"
             "**/commit [message]** — Commit & push changes to GitHub\n"
+            "**/scan** — Map current project structure\n"
+            "**/ingest [file]** — Read file into context\n"
             "**/whois** — Display user identification\n"
         )
         await message.answer(help_text, parse_mode="Markdown")
@@ -153,6 +156,39 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await callback.message.answer(f"🛡️ **Safety Audit:**\n{audit_text}")
         else:
             await callback.message.edit_text(f"❌ {result}")
+
+    @dp.message(Command("scan"))
+    async def cmd_scan(message: types.Message):
+        """Map project structure and inform the LLM context."""
+        try:
+            res = subprocess.run(["ls", "-R"], capture_output=True, text=True, timeout=5)
+            structure = res.stdout.strip()
+            history = get_context(message.from_user.id)
+            history.append({'role': 'user', 'content': f"Project Structure Map:\n{structure}"})
+            await message.answer(f"📂 **Project Scanned.** History updated with file map.")
+        except Exception as e:
+            await message.answer(f"❌ Scan failed: {e}")
+
+    @dp.message(Command("ingest"))
+    async def cmd_ingest(message: types.Message, command: CommandObject):
+        """Read a file into the LLM context."""
+        filename = command.args
+        if not filename:
+            await message.answer("⚠️ Usage: `/ingest [filename]`")
+            return
+
+        if not os.path.exists(filename):
+            await message.answer(f"❌ File `{filename}` not found.")
+            return
+
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                content = f.read()
+            history = get_context(message.from_user.id)
+            history.append({'role': 'user', 'content': f"Ingested File Content ({filename}):\n{content}"})
+            await message.answer(f"📄 **File `{filename}` ingested.** Content added to memory.")
+        except Exception as e:
+            await message.answer(f"❌ Ingest failed: {e}")
 
     @dp.message(Command("whois"))
     async def cmd_whois(message: types.Message):

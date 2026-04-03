@@ -102,7 +102,7 @@ echo "📝 Generating local .env configuration..."
 if [ -f .env ]; then
     echo "⚠️  .env already exists. Merging new Arc variables while preserving existing config..."
     # Append Arc variables if they don't exist
-    for var in ONEAPI_DEVICE_SELECTOR SYCL_ENABLE OLLAMA_NUM_GPU ZES_ENABLE_SYSMAN SYCL_CACHE_PERSISTENT MODEL_NAME OLLAMA_URL UR_L0_LOADER_IGNORE_VERSION; do
+    for var in ONEAPI_DEVICE_SELECTOR SYCL_ENABLE OLLAMA_NUM_GPU ZES_ENABLE_SYSMAN SYCL_CACHE_PERSISTENT MODEL_NAME OLLAMA_URL UR_L0_LOADER_IGNORE_VERSION OLLAMA_FLASH_ATTENTION; do
         if ! grep -q "^$var=" .env; then
             case $var in
                 ONEAPI_DEVICE_SELECTOR) echo "ONEAPI_DEVICE_SELECTOR=level_zero:0" >> .env ;;
@@ -113,6 +113,7 @@ if [ -f .env ]; then
                 MODEL_NAME) echo "MODEL_NAME=dolphin-mistral:7b" >> .env ;;
                 OLLAMA_URL) echo "OLLAMA_URL=http://172.25.64.1:11434" >> .env ;;
                 UR_L0_LOADER_IGNORE_VERSION) echo "UR_L0_LOADER_IGNORE_VERSION=1" >> .env ;;
+                OLLAMA_FLASH_ATTENTION) echo "OLLAMA_FLASH_ATTENTION=true" >> .env ;;
             esac
         fi
     done
@@ -130,6 +131,7 @@ OLLAMA_NUM_GPU=999
 ZES_ENABLE_SYSMAN=1
 SYCL_CACHE_PERSISTENT=1
 UR_L0_LOADER_IGNORE_VERSION=1
+OLLAMA_FLASH_ATTENTION=true
 EOF
 fi
 
