@@ -51,6 +51,22 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
 
+    @dp.message(Command("whois"))
+    async def cmd_whois(message: types.Message):
+        handle = "┼┼Üδ┼│εR"
+        box = (
+            "```text\n"
+            "┌──────────────────────────────────────────┐\n"
+            "│  USER IDENTIFICATION                     │\n"
+            "├──────────────────────────────────────────┤\n"
+            f"│  Handle: {handle}                    │\n"
+            "│  Status: Old-school BBS Hacker       │\n"
+            "│  Access: SYSOP LEVEL                 │\n"
+            "└──────────────────────────────────────────┘\n"
+            "```"
+        )
+        await message.answer(box, parse_mode="MarkdownV2")
+
     @dp.message(Command("scan"))
     async def cmd_scan(message: types.Message):
         await bot.send_chat_action(message.chat.id, "typing")
