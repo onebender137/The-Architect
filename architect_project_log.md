@@ -28,4 +28,10 @@
 * [x] Drafted Social Media Launch Strategy
 * [x] Deployed High-Depth Technical Wiki
 * [x] Finalized production code with Interactive Audits
+* [x] **Project Deep Dive & Roadmap (Phase 6 Proposals)**:
+    1. 🧠 **Neural Memory (RAG)**: Persistent local context.
+    2. 🤖 **Autonomous Task Agent**: `/build` command loop.
+    3. 🎙️ **Voice-to-Code**: Whisper XPU integration.
+    4. 🎛️ **Claw HUD**: BBS-style ASCII telemetry.
+    5. 🛠️ **Self-Evolving Skills**: LLM-authored modular skills.
 * [ ] *Next Step:* Build a "Diagnostic Skill" for real-time MSI Claw thermal monitoring.
