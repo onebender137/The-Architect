@@ -86,15 +86,53 @@ except Exception as e:
 "
 
 # 6. OneAPI/IPEX Configuration (.env)
-echo "📝 Generating local .env configuration..."
-cat <<EOF > .env
-# --- The Architect: Intel Arc Optimized Environment ---
-ONEAPI_DEVICE_SELECTOR=level_zero:0
-SYCL_ENABLE=1
-OLLAMA_NUM_GPU=999
-ZES_ENABLE_SYSMAN=1
-SYCL_CACHE_PERSISTENT=1
-EOF
+echo "📝 Configuring local .env for Intel Arc..."
+ENV_FILE=".env"
+
+# List of hardware variables to ensure exist
+vars=(
+    "ONEAPI_DEVICE_SELECTOR=level_zero:0"
+    "SYCL_ENABLE=1"
+    "OLLAMA_NUM_GPU=999"
+    "ZES_ENABLE_SYSMAN=1"
+    "SYCL_CACHE_PERSISTENT=1"
+    "OLLAMA_FLASH_ATTENTION=true"
+)
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "📄 .env not found. Creating from template..."
+    if [ -f ".env.template" ]; then
+        cp .env.template "$ENV_FILE"
+    else
+        touch "$ENV_FILE"
+    fi
+fi
+
+for var in "${vars[@]}"; do
+    key=$(echo "$var" | cut -d'=' -f1)
+    if ! grep -q "^$key=" "$ENV_FILE"; then
+        echo "➕ Adding $var to $ENV_FILE"
+        echo "$var" >> "$ENV_FILE"
+    else
+        echo "✅ $key already configured."
+    fi
+done
+
+# 7. Security & Secret Scanning (TruffleHog)
+echo "🛡️ Configuring security hooks..."
+if ! command -v trufflehog &> /dev/null; then
+    echo "🔍 TruffleHog not found. Attempting installation..."
+    curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin || echo "⚠️ TruffleHog installation failed. Please install manually."
+fi
+
+if [ -f "scripts/pre-push" ]; then
+    mkdir -p .git/hooks
+    cp scripts/pre-push .git/hooks/pre-push
+    chmod +x .git/hooks/pre-push
+    echo "✅ Git pre-push hook installed."
+else
+    echo "⚠️ scripts/pre-push not found. Skipping hook installation."
+fi
 
 echo "-------------------------------------------------------"
 echo "🏁 Setup Complete!"

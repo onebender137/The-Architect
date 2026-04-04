@@ -9,6 +9,8 @@ The Architect is an elite, local-first coding assistant and OpenClaw skill manag
 - **OpenClaw Skill Management:** A modular system to install, audit, and run skills via Telegram.
 - **Self-Healing Loop:** Automatically monitors execution errors and writes its own hotfixes.
 - **Neural Memory (RAG):** Persistent local context from the codebase using ChromaDB and Intel-optimized embeddings.
+- **Syndicate Orchestration:** specialized personas (Ghost, Pulse, Spark, Specter) for targeted tasks.
+- **MCP Bridge:** standardized tool access using the Model Context Protocol.
 
 ## 📖 Documentation Sections
 

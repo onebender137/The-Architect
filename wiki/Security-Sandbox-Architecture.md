@@ -6,25 +6,24 @@ The Architect is designed with a "Local-First" approach, ensuring that your code
 
 ## 🛠️ Technical Implementation
 
-The Architect's code execution engine is implemented in the `run_sandboxed_python` function in `coder_agent.py`. It uses a combination of Python's standard library modules to achieve isolation.
+The Architect's code execution engine is implemented in the `run_sandboxed_python` function in `skill_manager.py`. It uses a combination of Python's standard library modules to achieve isolation within a dedicated workspace.
 
-### 1. Isolation via `tempfile`
+### 1. Persistent `/workspace`
 
-When a Python script is sent to The Architect, it doesn't run in the current working directory. Instead, it uses `tempfile.mkdtemp()` to create a completely isolated, temporary directory for each execution.
+When a Python script is sent to The Architect, it doesn't run in the main project directory. Instead, it uses a dedicated `/workspace` directory for execution. This allows for persistent state during autonomous `/build` loops.
 
 ```python
-temp_dir = tempfile.mkdtemp()
-temp_file = os.path.join(temp_dir, "task.py")
+temp_file = os.path.join(WORKSPACE_DIR, "task.py")
 try:
     with open(temp_file, "w", encoding="utf-8") as f: f.write(code)
     # Execution occurs here...
-finally:
-    shutil.rmtree(temp_dir, ignore_errors=True)
+except Exception as e:
+    return False, f"❌ Workspace Error: {str(e)}"
 ```
 
 **Key Security Features:**
-- **No Shared State:** Each execution starts with a clean, empty directory.
-- **Automatic Cleanup:** The `finally` block ensures the temporary directory and all generated files are deleted immediately after the script finishes, regardless of whether it succeeded or failed.
+- **Isolated CWD:** The root for execution is restricted to `/workspace`, not the project root.
+- **Environment Passthrough:** Only necessary environment variables (like XPU/IPEX) are passed to the subprocess.
 
 ### 2. Execution via `subprocess`
 

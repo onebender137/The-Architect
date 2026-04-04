@@ -10,10 +10,13 @@ This project represents the **Syndicate Build (Phase 6)**, bridging the gap betw
 
 The **Syndicate Build** introduces heavy-duty autonomous and contextual capabilities:
 
-*   🧠 **Neural Memory (Local RAG):** Persistent codebase awareness using ChromaDB and `all-MiniLM-L6-v2`. Use `/reindex` to scan your project.
-*   🤖 **Autonomous Task Agent:** The `/build` loop allows The Architect to execute multi-turn coding tasks, self-heal from errors, and persist work in a dedicated `/workspace`.
-*   🎙️ **Voice-to-Code:** Local **OpenAI Whisper** integration (running on XPU) for hands-free coding and commanding via Telegram voice messages.
-*   📟 **Claw HUD & Diagnostics:** Real-time BBS-style ASCII telemetry and deep-dive hardware monitoring optimized for the MSI Claw's 7-inch screen.
+*   🧠 **Neural Memory (Local RAG):** Persistent codebase awareness using ChromaDB.
+*   🤖 **Autonomous Task Agent:** The `/build` loop allows The Architect to execute multi-turn coding tasks and persist work in `/workspace`.
+*   🎙️ **Voice-to-Code:** Local **OpenAI Whisper** integration (running on XPU).
+*   🔌 **MCP Bridge:** Standardized tool access via Model Context Protocol (`/mcp_connect`, `/mcp_call`).
+*   👥 **Syndicate Orchestration:** specialized personas (Ghost, Pulse, Spark, Specter) via `/build_with`.
+*   👁️ **Field-Ops Vision:** Local image analysis (VLM) for hardware/UI audits.
+*   🧬 **Self-Evolution Engine:** Autonomous skill synthesis via `/evolve`.
 
 ---
 
