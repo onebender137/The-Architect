@@ -34,5 +34,14 @@
     * [x] 🎛️ **Claw HUD**: Real-time ASCII telemetry dashboard.
     * [x] 🛠️ **Claw Diagnostics**: Hardware-specific skill for MSI Claw.
     * [x] 🎙️ **Voice-to-Code**: Local Whisper XPU integration.
-* [x] **Roadmap**:
-    5. 🛠️ **Self-Evolving Skills**: LLM-authored modular skills (Future).
+* [x] **Phase 7: The Syndicate Evolution (COMPLETED)**
+    * [x] 🔌 **MCP Bridge**: Standardized tool access via Model Context Protocol.
+    * [x] 👥 **Multi-Agent Orchestration**: Specialized Syndicate personas (Ghost, Pulse, Spark).
+    * [x] 🧬 **Self-Evolution Engine**: Autonomous skill synthesis via `/evolve`.
+    * [x] 👁️ **Field-Ops Vision**: Local image analysis (VLMs) for hardware/UI audits.
+* [ ] **Phase 8: The Ghost in the Machine (IN PROGRESS)**
+    * [ ] 🧠 **Thinking Process (Reasoning)**: Visualizing LLM chain-of-thought (DeepSeek-R1 style).
+    * [ ] 🔍 **Specter Agent**: Advanced security auditing and vulnerability scanning sub-agent.
+    * [ ] 🤖 **Core Ultra NPU Integration**: Offloading inference to the Intel NPU via OpenVINO GenAI.
+    * [ ] 📚 **Codex Vault Bridge**: Syncing local Markdown knowledge bases (Obsidian/Logseq) to RAG.
+    * [ ] 🖼️ **Vision Audit 2.0**: Structured multi-modal hardware diagnostics from device photos.

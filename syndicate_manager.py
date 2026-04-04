@@ -27,6 +27,11 @@ class SyndicateManager:
                 name="Spark",
                 description="UI/UX Frontend Architect",
                 system_prompt="You are 'Spark', a frontend specialist within The Architect's Syndicate. You design mobile-optimized, high-vibe interfaces and dashboards."
+            ),
+            "Specter": AgentPersona(
+                name="Specter",
+                description="Advanced Security & Vulnerability Auditor",
+                system_prompt="You are 'Specter', the elite security auditor of The Architect's Syndicate. You specialize in zero-trust architecture, advanced vulnerability research, and deep-dive code audits. You prioritize finding edge-case security flaws and suggesting hardened mitigations."
             )
         }
 
