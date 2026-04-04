@@ -13,6 +13,7 @@ from utils import format_output_for_mobile
 from mcp_manager import mcp_manager
 from syndicate_manager import syndicate_manager
 import json
+from hardware_config import get_power_stats
 
 logger = logging.getLogger(__name__)
 
@@ -290,12 +291,16 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
                     hours, mins = divmod(mins, 60)
                     uptime_str = f"{int(hours)}h {int(mins)}m"
 
+            # Power Stats
+            p_stats = get_power_stats()
+
             # GPU (Intel Arc) - Fallback detection
             gpu_status = "ARC [IDLE]"
             if device == "xpu":
                 gpu_status = "ARC [ACTIVE]"
 
             # BBS-Style ASCII HUD
+            p_val = f"{p_stats['battery']} / {p_stats['thermal']}"
             hud = (
                 "```text\n"
                 "╔════════════ ARCHITECT HUD ════════════╗\n"
@@ -303,6 +308,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
                 f"║ MEMORY:   {mem_info.ljust(27)} ║\n"
                 f"║ UPTIME:   {uptime_str.ljust(27)} ║\n"
                 "╟───────────────────────────────────────╢\n"
+                f"║ BATT/TEMP: {p_val.ljust(26)} ║\n"
                 f"║ GPU:      {gpu_status.ljust(27)} ║\n"
                 f"║ ENGINE:   {MODEL_NAME[:25].ljust(27)} ║\n"
                 "╚═══════════════════════════════════════╝\n"
@@ -314,10 +320,12 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
 
     @dp.message(Command("stats"))
     async def cmd_stats(message: types.Message):
+        p_stats = get_power_stats()
         stats_text = (
             "🛠️ **Architect System Stats**\n\n"
             f"**Engine**: `{MODEL_NAME}`\n"
             f"**Device**: `{'Intel Arc XPU' if device == 'xpu' else 'CPU'}`\n"
+            f"**Power**: `🔋 {p_stats['battery']} / 🌡️ {p_stats['thermal']}`\n"
             f"**Interface**: `Mobile Optimized (50-char)`\n"
             f"**Skills**: `{len(SkillManager.list_skills())} loaded`\n"
             f"**Neural Memory**: `Active` (ChromaDB)\n"
