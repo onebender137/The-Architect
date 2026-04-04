@@ -10,6 +10,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from skill_manager import SkillManager, run_sandboxed_python, SYSTEM_PROMPT_BASE, SELF_HEAL_PROMPT, BUILD_LOOP_PROMPT
 from git_utils import git_manager
 from utils import format_output_for_mobile
+from mcp_manager import mcp_manager
+from syndicate_manager import syndicate_manager
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "1. Output a full SKILL.md file.\n"
             "2. The skill must use either a ```bash or ```python block for execution.\n"
             "3. If Python, ensure it is self-contained.\n"
-            "4. Format the output as: \n"
+            "4. Include a 'Verification' section with a small test script.\n"
+            "5. Format the output as: \n"
             "NAME: [Skill Name]\n"
             "CONTENT:\n"
             "[Full SKILL.md content]"
@@ -64,6 +68,149 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             )
         except Exception as e:
             await status_msg.edit_text(f"❌ Evolution error: {e}")
+
+    @dp.message(Command("mcp_connect"))
+    async def cmd_mcp_connect(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("⚠️ Usage: `/mcp_connect [slug] [command] [args...]`")
+            return
+
+        parts = command.args.split()
+        if len(parts) < 2:
+            await message.answer("⚠️ Usage: `/mcp_connect [slug] [command] [args...]`")
+            return
+
+        slug = parts[0]
+        cmd = parts[1]
+        args = parts[2:]
+
+        status_msg = await message.answer(f"🔌 **Connecting to MCP: `{slug}`...**")
+        success, result = await mcp_manager.connect_stdio(slug, cmd, args)
+
+        if success:
+            await status_msg.edit_text(f"✅ {result}")
+        else:
+            await status_msg.edit_text(f"❌ Failed to connect: {result}")
+
+    @dp.message(Command("mcp_list"))
+    async def cmd_mcp_list(message: types.Message):
+        sessions = mcp_manager.list_sessions()
+        if not sessions:
+            await message.answer("📂 No active MCP sessions.")
+            return
+
+        resp = "🔌 **Active MCP Sessions:**\n"
+        for s in sessions:
+            tools, err = await mcp_manager.list_tools(s)
+            if err:
+                resp += f"• `{s}` (Error: {err})\n"
+            else:
+                tool_names = [t.name for t in tools.tools]
+                resp += f"• `{s}`: {', '.join(tool_names)}\n"
+
+        await message.answer(format_output_for_mobile(resp), parse_mode="Markdown")
+
+    @dp.message(Command("syndicate"))
+    async def cmd_syndicate(message: types.Message):
+        syndicate = syndicate_manager.list_syndicate()
+        resp = "👥 **The Syndicate (Specialized Sub-Agents):**\n\n"
+        for persona in syndicate:
+            resp += f"• **{persona.name}**: {persona.description}\n"
+
+        resp += "\nUse `/build_with [agent] [task]` to delegate specialized work."
+        await message.answer(format_output_for_mobile(resp), parse_mode="Markdown")
+
+    @dp.message(Command("build_with"))
+    async def cmd_build_with(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("🏗️ **Syndicate Build Mode**\nUsage: `/build_with [agent_name] [task objective]`")
+            return
+
+        parts = command.args.split(None, 1)
+        if len(parts) < 2:
+            await message.answer("⚠️ Usage: `/build_with [agent_name] [task objective]`")
+            return
+
+        agent_slug = parts[0].capitalize()
+        goal = parts[1]
+
+        persona = syndicate_manager.get_persona(agent_slug)
+        if not persona:
+            await message.answer(f"❌ Agent `{agent_slug}` not found in the Syndicate.")
+            return
+
+        status_msg = await message.answer(f"🏗️ **{persona.name} is online...**\nObjective: `{goal}`")
+
+        current_output = "No previous attempts."
+        max_iterations = 5
+
+        for i in range(max_iterations):
+            await bot.send_chat_action(message.chat.id, "typing")
+
+            # Combine system prompts
+            full_system_prompt = f"{SYSTEM_PROMPT_BASE}\n\n{persona.system_prompt}"
+            prompt = BUILD_LOOP_PROMPT.format(goal=goal, output=current_output)
+
+            messages = [
+                {'role': 'system', 'content': full_system_prompt},
+                {'role': 'user', 'content': prompt}
+            ]
+
+            try:
+                res = await ollama_client.chat(model=MODEL_NAME, messages=messages)
+                ans = res['message']['content']
+
+                if "✅ MISSION COMPLETE" in ans:
+                    await message.answer(format_output_for_mobile(f"🏆 **{persona.name}: Task Finalized!**\n\n{ans}"), parse_mode="Markdown")
+                    break
+
+                code_match = re.search(r"```python\n(.*?)\n```", ans, re.DOTALL)
+                if not code_match:
+                    await message.answer(format_output_for_mobile(f"⚠️ **{persona.name} Wait Step:**\n{ans}"), parse_mode="Markdown")
+                    break
+
+                code = code_match.group(1).strip()
+                await message.answer(format_output_for_mobile(f"⚙️ **{persona.name} Iteration {i+1}: Executing...**\n\n{ans}"), parse_mode="Markdown")
+
+                success, output = await run_sandboxed_python(code)
+                current_output = output
+
+                if not success:
+                    await message.answer(format_output_for_mobile(f"❌ **{persona.name} Error:**\n```text\n{output}\n```"), parse_mode="Markdown")
+                else:
+                    await message.answer(format_output_for_mobile(f"✅ **{persona.name} Result:**\n```text\n{output}\n```"), parse_mode="Markdown")
+
+            except Exception as e:
+                await message.answer(f"❌ Build loop error: {e}")
+                break
+        else:
+            await message.answer(f"🏁 **Max iterations (5) reached. {persona.name} paused.**")
+
+    @dp.message(Command("mcp_call"))
+    async def cmd_mcp_call(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("⚠️ Usage: `/mcp_call [slug] [tool_name] [json_args]`")
+            return
+
+        parts = command.args.split(None, 2)
+        if len(parts) < 3:
+            await message.answer("⚠️ Usage: `/mcp_call [slug] [tool_name] [json_args]`")
+            return
+
+        slug, tool_name, json_args = parts
+        try:
+            args = json.loads(json_args)
+        except json.JSONDecodeError:
+            await message.answer("❌ Invalid JSON arguments.")
+            return
+
+        status_msg = await message.answer(f"🚀 **Calling `{tool_name}` on `{slug}`...**")
+        result, err = await mcp_manager.call_tool(slug, tool_name, args)
+
+        if err:
+            await status_msg.edit_text(f"❌ Error: {err}")
+        else:
+            await status_msg.edit_text(format_output_for_mobile(f"📊 **Result:**\n```json\n{json.dumps(result, indent=2)}\n```"), parse_mode="Markdown")
 
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
@@ -558,6 +705,38 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             await status_msg.edit_text(format_output_for_mobile(f"✅ {result}"), parse_mode="Markdown")
         except Exception as e:
             await status_msg.edit_text(f"❌ Git operation failed: {e}")
+
+    @dp.message(F.photo)
+    async def handle_photo(message: types.Message):
+        await bot.send_chat_action(message.chat.id, "typing")
+
+        photo = message.photo[-1] # Highest resolution
+        file_info = await bot.get_file(photo.file_id)
+
+        # Determine VLM model
+        vlm_model = os.getenv("VLM_MODEL", "moondream")
+
+        status_msg = await message.answer(f"👁️ **Analyzing image with `{vlm_model}`...**")
+
+        try:
+            # Download photo to memory
+            file_buffer = await bot.download_file(file_info.file_path)
+            import base64
+            img_b64 = base64.b64encode(file_buffer.read()).decode()
+
+            prompt = message.caption or "Analyze this image for architectural or code-related details."
+
+            res = await ollama_client.generate(
+                model=vlm_model,
+                prompt=prompt,
+                images=[img_b64]
+            )
+            ans = res['response']
+
+            await status_msg.edit_text(format_output_for_mobile(f"👁️ **Visual Analysis:**\n\n{ans}"), parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"VLM error: {e}")
+            await status_msg.edit_text(f"❌ Vision Analysis failed: {e}")
 
     @dp.message(F.voice)
     async def handle_voice(message: types.Message):

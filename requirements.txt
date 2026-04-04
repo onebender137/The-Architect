@@ -8,3 +8,5 @@ sentence-transformers
 torch
 openai-whisper
 pydub
+mcp
+rank_bm25
