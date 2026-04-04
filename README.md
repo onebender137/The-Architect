@@ -2,11 +2,22 @@
 
 **The Architect** is an elite, local-first coding assistant and OpenClaw skill manager specifically engineered for the **MSI Claw (Intel Core Ultra 7 155H)**.
 
-This project represents the **Syndicate Build (Phase 6)**, bridging the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development. It provides a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
+The Architect represents the **Neural Foundry Build (Phase 9)**, bridging the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development. It provides a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
 
 ---
 
-## 🧠 Phase 6: The Neural Expansion (Latest Features)
+## 🧪 Phase 9: The Neural Foundry (Latest Features)
+
+The **Neural Foundry Build** focuses on agentic autonomy and hardware-aware intelligence:
+
+*   🕸️ **Agentic Graph Memory:** Moving beyond flat RAG to a dependency-mapped knowledge graph of your entire codebase.
+*   🔋 **Power-Aware Telemetry:** Real-time battery and thermal monitoring to drive adaptive AI inference.
+*   🤖 **Swarm Orchestration:** Concurrent multi-agent collaboration (Ghost, Pulse, Spark) for complex build tasks.
+*   ⚡ **OpenVINO GenAI Core:** High-performance, NPU-optimized inference backend specifically for Intel Core Ultra.
+
+---
+
+## 🧠 Phase 6: The Neural Expansion
 
 The **Syndicate Build** introduces heavy-duty autonomous and contextual capabilities:
 

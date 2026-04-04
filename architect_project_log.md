@@ -39,9 +39,22 @@
     * [x] 👥 **Multi-Agent Orchestration**: Specialized Syndicate personas (Ghost, Pulse, Spark).
     * [x] 🧬 **Self-Evolution Engine**: Autonomous skill synthesis via `/evolve`.
     * [x] 👁️ **Field-Ops Vision**: Local image analysis (VLMs) for hardware/UI audits.
-* [ ] **Phase 8: The Ghost in the Machine (IN PROGRESS)**
-    * [ ] 🧠 **Thinking Process (Reasoning)**: Visualizing LLM chain-of-thought (DeepSeek-R1 style).
-    * [ ] 🔍 **Specter Agent**: Advanced security auditing and vulnerability scanning sub-agent.
-    * [ ] 🤖 **Core Ultra NPU Integration**: Offloading inference to the Intel NPU via OpenVINO GenAI.
-    * [ ] 📚 **Codex Vault Bridge**: Syncing local Markdown knowledge bases (Obsidian/Logseq) to RAG.
-    * [ ] 🖼️ **Vision Audit 2.0**: Structured multi-modal hardware diagnostics from device photos.
+* [x] **Phase 8: The Ghost in the Machine (COMPLETED)**
+    * [x] 🧠 **Thinking Process (Reasoning)**: Visualizing LLM chain-of-thought (DeepSeek-R1 style).
+    * [x] 🔍 **Specter Agent**: Advanced security auditing and vulnerability scanning sub-agent.
+    * [x] 🤖 **Core Ultra NPU Integration**: Offloading inference to the Intel NPU via OpenVINO GenAI.
+    * [x] 📚 **Codex Vault Bridge**: Syncing local Markdown knowledge bases (Obsidian/Logseq) to RAG.
+    * [x] 🖼️ **Vision Audit 2.0**: Structured multi-modal hardware diagnostics from device photos.
+* [ ] **Phase 9: The Neural Foundry (IN PROGRESS)**
+    * [ ] 🕸️ **Agentic Graph Memory**: Mapping code dependencies and logic flows for smarter RAG.
+    * [ ] ⚙️ **OpenVINO GenAI C++ Core**: Custom high-speed backend migration for the MSI Claw.
+    * [ ] 🔋 **Power-Aware Inference**: Adaptive model switching based on battery and thermals.
+    * [ ] 🐝 **Swarm Orchestration**: Concurrent multi-agent collaboration on `/build` tasks.
+    * [ ] 🛡️ **Neural Sandbox Hardening**: Self-attacking sandbox audits for zero-trust security.
+
+### 🚫 Phase 9: Vetoed Research Options
+*   **Cloud-SaaS Hybrid**: REJECTED. Breaks the "Local-First" privacy promise.
+*   **NVIDIA/CUDA Compatibility Layer**: REJECTED. Pure Intel Arc build only.
+*   **Universal Windows GUI (Electron)**: REJECTED. Preservation of BBS hacker aesthetic.
+*   **70B+ Model Deployment**: REJECTED. Memory constraints on MSI Claw (8GB VRAM).
+*   **Automated Social Presence**: REJECTED. The Architect is for the SysOp, not for clout.
