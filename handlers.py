@@ -739,7 +739,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             res = await ollama_client.generate(
                 model=vlm_model,
                 prompt=prompt,
-                images=[img_b64]
+                images=[img_b64],
+                keep_alive=0
             )
             ans = res['response']
 
