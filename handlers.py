@@ -716,6 +716,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         # Determine VLM model
         vlm_model = os.getenv("VLM_MODEL", "moondream")
 
+        is_vision_audit = message.caption and "/vision_audit" in message.caption
+
         status_msg = await message.answer(f"👁️ **Analyzing image with `{vlm_model}`...**")
 
         try:
@@ -724,7 +726,15 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             import base64
             img_b64 = base64.b64encode(file_buffer.read()).decode()
 
-            prompt = message.caption or "Analyze this image for architectural or code-related details."
+            if is_vision_audit:
+                prompt = (
+                    "Perform a structured 'Vision Audit' on this image. "
+                    "Identify hardware components, UI elements, or code snippets. "
+                    "Report on potential optimizations, hardware wear, or UI inconsistencies. "
+                    "Format as a BBS-style technical report."
+                )
+            else:
+                prompt = message.caption or "Analyze this image for architectural or code-related details."
 
             res = await ollama_client.generate(
                 model=vlm_model,
@@ -733,7 +743,8 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             )
             ans = res['response']
 
-            await status_msg.edit_text(format_output_for_mobile(f"👁️ **Visual Analysis:**\n\n{ans}"), parse_mode="Markdown")
+            header = "🛡️ **VISION AUDIT REPORT**" if is_vision_audit else "👁️ **Visual Analysis**"
+            await status_msg.edit_text(format_output_for_mobile(f"{header}:\n\n{ans}"), parse_mode="Markdown")
         except Exception as e:
             logger.error(f"VLM error: {e}")
             await status_msg.edit_text(f"❌ Vision Analysis failed: {e}")
@@ -773,7 +784,12 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
 
     async def process_message_text(message: types.Message, text: str):
         history = get_context(message.from_user.id)
-        await bot.send_chat_action(message.chat.id, "typing")
+
+        # Phase 8: Reason Visualizer (Simulation for non-R1 models)
+        if "deepseek-r1" in MODEL_NAME.lower():
+            status_msg = await message.answer("🧠 **Thinking...**")
+        else:
+            await bot.send_chat_action(message.chat.id, "typing")
 
         # RAG: Search neural memory for context
         relevant_context = ""
@@ -800,6 +816,10 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         try:
             res = await ollama_client.chat(model=MODEL_NAME, messages=messages)
             ans = res['message']['content']
+
+            # Phase 8: Reason Visualizer Clean-up
+            if "deepseek-r1" in MODEL_NAME.lower() and 'status_msg' in locals():
+                await status_msg.delete()
 
             # Update history
             history.append({'role': 'user', 'content': text})
