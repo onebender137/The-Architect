@@ -14,6 +14,57 @@ from utils import format_output_for_mobile
 logger = logging.getLogger(__name__)
 
 def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, pending_skills, get_context, memory_manager, voice_processor):
+    @dp.message(Command("evolve"))
+    async def cmd_evolve(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("🧬 **Self-Evolution Protocol**\nUsage: `/evolve [new skill concept]`")
+            return
+
+        concept = command.args.strip()
+        status_msg = await message.answer(f"🧬 **The Architect: Brainstorming '{concept}'...**")
+
+        evolution_prompt = (
+            f"You are evolving your own capabilities. Create a new modular skill for the MSI Claw based on this concept: {concept}\n\n"
+            "Requirements:\n"
+            "1. Output a full SKILL.md file.\n"
+            "2. The skill must use either a ```bash or ```python block for execution.\n"
+            "3. If Python, ensure it is self-contained.\n"
+            "4. Format the output as: \n"
+            "NAME: [Skill Name]\n"
+            "CONTENT:\n"
+            "[Full SKILL.md content]"
+        )
+
+        try:
+            res = await ollama_client.chat(model=MODEL_NAME, messages=[{'role': 'user', 'content': evolution_prompt}])
+            ans = res['message']['content']
+
+            name_match = re.search(r"NAME:\s*(.*?)(?:\n|$)", ans, re.IGNORECASE)
+            content_match = re.search(r"CONTENT:\s*\n?(.*)", ans, re.DOTALL | re.IGNORECASE)
+
+            if not name_match or not content_match:
+                await status_msg.edit_text("❌ Evolution failed: Could not parse LLM output. Please try again.")
+                return
+
+            name = name_match.group(1).strip()
+            content = content_match.group(1).strip()
+
+            # Trigger the standard installation flow
+            skill_id = f"{message.from_user.id}_{int(asyncio.get_running_loop().time())}"
+            pending_skills[skill_id] = {"name": name, "content": content}
+
+            builder = InlineKeyboardBuilder()
+            builder.button(text="✅ Approve", callback_data=f"skill_ok:{skill_id}")
+            builder.button(text="❌ Cancel", callback_data=f"skill_no:{skill_id}")
+
+            await status_msg.edit_text(
+                format_output_for_mobile(f"🧬 **Evolution Proposal: {name}**\n\nInstall this new capability?"),
+                reply_markup=builder.as_markup(),
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            await status_msg.edit_text(f"❌ Evolution error: {e}")
+
     @dp.message(Command("logs"))
     async def cmd_logs(message: types.Message):
         try:
@@ -56,6 +107,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             "**/build [task]** — Start autonomous build loop\n"
             "**/ingest [file]** — Read file into context\n"
             "**/top** — Monitor real-time system stats\n"
+            "**/evolve [concept]** — Brainstorm a new skill\n"
             "**/stats** — Engine & System info\n"
             "**/logs** — View bot runtime logs\n"
             "**/whois** — Display user identification\n"
@@ -122,6 +174,7 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             f"**Interface**: `Mobile Optimized (50-char)`\n"
             f"**Skills**: `{len(SkillManager.list_skills())} loaded`\n"
             f"**Neural Memory**: `Active` (ChromaDB)\n"
+            f"**Voice Interface**: `Whisper (Base)`\n"
             "**Access**: `SYSOP`"
         )
         await message.answer(format_output_for_mobile(stats_text), parse_mode="Markdown")
@@ -305,20 +358,25 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             with open(skill_file, "r", encoding="utf-8") as f:
                 content = f.read()
         else:
-            # If it's a file, we wrap it in a bash block as a basic skill
-            with open(library_path, "rb") as f:
-                file_content_b64 = base64.b64encode(f.read()).decode()
+            # If it's a file, we wrap it appropriately
+            with open(library_path, "r", encoding="utf-8") as f:
+                raw_content = f.read()
 
-            content = (
-                f"# {script_name}\n\n"
-                "```bash\n"
-                "# Run the script via base64 to avoid delimiter issues\n"
-                "TMP_SCRIPT=$(mktemp)\n"
-                f"echo '{file_content_b64}' | base64 -d > \"$TMP_SCRIPT\"\n"
-                "bash \"$TMP_SCRIPT\"\n"
-                "rm \"$TMP_SCRIPT\"\n"
-                "```"
-            )
+            if script_name.endswith(".py"):
+                content = f"# {script_name}\n\n```python\n{raw_content}\n```"
+            else:
+                with open(library_path, "rb") as f:
+                    file_content_b64 = base64.b64encode(f.read()).decode()
+                content = (
+                    f"# {script_name}\n\n"
+                    "```bash\n"
+                    "# Run the script via base64 to avoid delimiter issues\n"
+                    "TMP_SCRIPT=$(mktemp)\n"
+                    f"echo '{file_content_b64}' | base64 -d > \"$TMP_SCRIPT\"\n"
+                    "bash \"$TMP_SCRIPT\"\n"
+                    "rm \"$TMP_SCRIPT\"\n"
+                    "```"
+                )
 
         success, result = await SkillManager.install_skill(script_name, content)
         if success:
@@ -329,19 +387,26 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
     @dp.message(Command("run_skill"))
     async def cmd_run_skill(message: types.Message):
         slug = message.text.replace("/run_skill", "").strip()
-        cmd = SkillManager.get_skill_command(slug)
+        result = SkillManager.get_skill_command(slug)
 
-        if not cmd:
-            await message.answer(f"❌ No executable bash command found for skill `{slug}`.")
+        if not result:
+            await message.answer(f"❌ No executable command found for skill `{slug}`.")
             return
 
-        await message.answer(f"🚀 **Running skill:** `{slug}`...")
+        interpreter, cmd = result
+        await message.answer(f"🚀 **Running skill:** `{slug}` ({interpreter})...")
+
         try:
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
-            output = res.stdout.strip() or res.stderr.strip() or "No output."
+            if interpreter == "bash":
+                res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+                output = res.stdout.strip() or res.stderr.strip() or "No output."
+            else:
+                # Python execution in sandbox
+                success, output = await run_sandboxed_python(cmd)
+
             await message.answer(format_output_for_mobile(f"📊 **Result:**\n```text\n{output}\n```"), parse_mode="Markdown")
         except subprocess.TimeoutExpired:
-            await message.answer("❌ Skill execution timed out (20s).")
+            await message.answer("❌ Skill execution timed out (30s).")
         except Exception as e:
             await message.answer(f"❌ Failed to run skill: {e}")
 
@@ -495,49 +560,6 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
         except Exception as e:
             await status_msg.edit_text(f"❌ Git operation failed: {e}")
 
-    @dp.message(F.text)
-    async def handle_text(message: types.Message):
-        if not message.text or message.text.startswith('/'):
-            return  # Let command handlers take care of commands
-
-        history = get_context(message.from_user.id)
-        await bot.send_chat_action(message.chat.id, "typing")
-
-        # RAG: Search neural memory for context
-        relevant_context = ""
-        memory_results = await memory_manager.search(message.text, n_results=2)
-        if memory_results and memory_results['documents']:
-            docs = memory_results['documents'][0]
-            metas = memory_results['metadatas'][0]
-            context_blocks = []
-            for i in range(len(docs)):
-                path = metas[i].get('path', 'unknown')
-                context_blocks.append(f"FILE: {path}\n---\n{docs[i]}\n---")
-            relevant_context = "\n\n".join(context_blocks)
-
-        system_prompt = SYSTEM_PROMPT_BASE
-        if relevant_context:
-            system_prompt += f"\n\nRELEVANT PROJECT CONTEXT:\n{relevant_context}\n"
-
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            *list(history),
-            {'role': 'user', 'content': message.text}
-        ]
-
-        try:
-            res = await ollama_client.chat(model=MODEL_NAME, messages=messages)
-            ans = res['message']['content']
-
-            # Update history
-            history.append({'role': 'user', 'content': message.text})
-            history.append({'role': 'assistant', 'content': ans})
-
-            await message.answer(format_output_for_mobile(ans), parse_mode="Markdown")
-        except Exception as e:
-            logger.error(f"Ollama error: {e}")
-            await message.answer("⚠️ Ollama connection error. Make sure `ollama serve` is running.")
-
     @dp.message(F.voice)
     async def handle_voice(message: types.Message):
         await bot.send_chat_action(message.chat.id, "record_voice")
@@ -566,5 +588,49 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
 
         # Process as a normal text message
         # We manually call handle_text logic or just wrap the message
-        message.text = transcription
-        await handle_text(message)
+        await process_message_text(message, transcription)
+
+    @dp.message(F.text)
+    async def handle_text(message: types.Message):
+        if not message.text or message.text.startswith('/'):
+            return  # Let command handlers take care of commands
+        await process_message_text(message, message.text)
+
+    async def process_message_text(message: types.Message, text: str):
+        history = get_context(message.from_user.id)
+        await bot.send_chat_action(message.chat.id, "typing")
+
+        # RAG: Search neural memory for context
+        relevant_context = ""
+        memory_results = await memory_manager.search(text, n_results=2)
+        if memory_results and memory_results['documents']:
+            docs = memory_results['documents'][0]
+            metas = memory_results['metadatas'][0]
+            context_blocks = []
+            for i in range(len(docs)):
+                path = metas[i].get('path', 'unknown')
+                context_blocks.append(f"FILE: {path}\n---\n{docs[i]}\n---")
+            relevant_context = "\n\n".join(context_blocks)
+
+        system_prompt = SYSTEM_PROMPT_BASE
+        if relevant_context:
+            system_prompt += f"\n\nRELEVANT PROJECT CONTEXT:\n{relevant_context}\n"
+
+        messages = [
+            {'role': 'system', 'content': system_prompt},
+            *list(history),
+            {'role': 'user', 'content': text}
+        ]
+
+        try:
+            res = await ollama_client.chat(model=MODEL_NAME, messages=messages)
+            ans = res['message']['content']
+
+            # Update history
+            history.append({'role': 'user', 'content': text})
+            history.append({'role': 'assistant', 'content': ans})
+
+            await message.answer(format_output_for_mobile(ans), parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Ollama error: {e}")
+            await message.answer("⚠️ Ollama connection error. Make sure `ollama serve` is running.")

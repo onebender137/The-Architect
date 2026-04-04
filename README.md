@@ -1,101 +1,110 @@
-The Architect: Senior Coding Agent (MSI Claw Edition)
+# 🏗️ The Architect: Senior Coding Agent (Syndicate Build)
 
-An elite, local-first coding assistant and OpenClaw skill manager specifically engineered for the MSI Claw (Intel Core Ultra 7 155H).
+**The Architect** is an elite, local-first coding assistant and OpenClaw skill manager specifically engineered for the **MSI Claw (Intel Core Ultra 7 155H)**.
 
-This project bridges the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development, providing a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
+This project represents the **Syndicate Build (Phase 6)**, bridging the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development. It provides a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
 
-🏎️ Hardware & Model (Intel Arc & Dolphin-Mistral)
+---
 
-The Architect has transitioned to **Dolphin-Mistral 7B**, a significant upgrade that enhances coding logic and conversational depth. This model is fully optimized for the Intel Xᵉ-LPG graphics (8 Xe-cores) found in the MSI Claw's Core Ultra 7 155H.
+## 🧠 Phase 6: The Neural Expansion (Latest Features)
 
-**Key Benefits of Dolphin-Mistral:**
+The **Syndicate Build** introduces heavy-duty autonomous and contextual capabilities:
 
-*   **Unrestricted Outputs:** Provides maximum flexibility for complex and uncensored use cases, ensuring the agent never refuses a legitimate technical request.
-*   **Higher Instruction Compliance:** Adheres strictly to complex system prompts and directives, resulting in more accurate code generation and tool usage.
-*   **Improved Dialogue Threading:** Maintains superior context across multi-turn conversations, allowing for seamless flow during deep debugging or architectural planning sessions.
+*   🧠 **Neural Memory (Local RAG):** Persistent codebase awareness using ChromaDB and `all-MiniLM-L6-v2`. Use `/reindex` to scan your project.
+*   🤖 **Autonomous Task Agent:** The `/build` loop allows The Architect to execute multi-turn coding tasks, self-heal from errors, and persist work in a dedicated `/workspace`.
+*   🎙️ **Voice-to-Code:** Local **OpenAI Whisper** integration (running on XPU) for hands-free coding and commanding via Telegram voice messages.
+*   📟 **Claw HUD & Diagnostics:** Real-time BBS-style ASCII telemetry and deep-dive hardware monitoring optimized for the MSI Claw's 7-inch screen.
 
-The system utilizes **Intel IPEX** (Intel Extension for PyTorch) optimizations to ensure all inference occurs on the XPU:
+---
 
-ONEAPI_DEVICE_SELECTOR=level_zero:0: Forces execution on the Arc iGPU.
+## 🏎️ Hardware & Model (Intel Arc & Dolphin-Mistral)
 
-SYCL_ENABLE=1: Enables the Data Parallel C++ runtime for cross-architecture speed.
+The Architect utilizes **Dolphin-Mistral 7B**, optimized for the Intel Xᵉ-LPG graphics (8 Xe-cores) found in the MSI Claw.
 
-OLLAMA_NUM_GPU=999: Offloads all model layers to the 8 Xe-cores for maximum inference speed.
+*   **Intel IPEX Optimization:** Uses Intel Extension for PyTorch to offload inference to the Arc iGPU.
+*   **Unrestricted Logic:** Dolphin-Mistral provides maximum flexibility for complex technical requests without censorship.
+*   **Mobile Optimized:** All outputs are formatted for the MSI Claw's screen (50-char width, vertical lists instead of tables).
 
-ZES_ENABLE_SYSMAN=1: Allows the system to manage GPU power states for sustained performance.
+---
 
-🔒 Local-First & Private
+## 🚀 Quick Start (MSI Claw / WSL2)
 
-Unlike Cloud-based AI assistants, The Architect is designed to run on a local Ollama instance.
+1.  **Clone the Repo** into your WSL2 environment.
+2.  **Run the Auto-Setup:**
+    ```bash
+    chmod +x setup_claw.sh
+    ./setup_claw.sh
+    ```
+    *This script installs system dependencies, configures the Intel AI stack (Torch/IPEX), and generates your `.env` template.*
+3.  **Configure `.env`:** Add your `BOT_TOKEN` (from @BotFather).
+4.  **Launch:**
+    ```bash
+    source ~/tg_bot_env/bin/activate
+    python coder_agent.py
+    ```
 
-Total Privacy: Your code, logs, and conversations never leave your device or local network.
+---
 
-Zero Latency: No waiting for cloud API queues.
+## 🕹️ Command Menu
 
-Offline Capable: Code and manage your projects without an internet connection.
+| Command | Description |
+| :--- | :--- |
+| `/build [task]` | **Start Autonomous Build Loop** (5 iterations max) |
+| `/evolve [concept]` | **Brainstorm a new skill** and propose installation |
+| `/reindex` | **Refresh Neural Memory** (RAG) by scanning codebase |
+| `/run [code]` | Execute Python in a secure, persistent `/workspace` |
+| `/scan` | Generate a visual tree of the project structure |
+| `/hud` | Display real-time ASCII hardware telemetry |
+| `/stats` | View engine, device, and RAG status |
+| `/install_skill` | Add a modular OpenClaw skill (with safety audit) |
+| `/run_skill [slug]` | Execute an installed bash-based skill |
+| `/promote [file]` | Graduate a script from `/library` to a modular skill |
+| `/ingest [file]` | Read a specific file into the current conversation context |
+| `/logs` | View the last 10 lines of the bot's runtime logs |
+| `/whois` | Display user identification (SYSOP handle) |
+| `/commit [msg]` | Stage, commit, and push changes to Git |
 
-🛠️ MSI Claw Hardware Tuning (Essential)
+---
 
-For maximum inference speed (tokens per second), your Claw needs specific BIOS and system tweaks to prevent thermal throttling and power capping:
+## 🛠️ Deep Dive Features
 
-1. BIOS Adjustments (Advanced Menu)
+### 🧠 Neural Memory (RAG)
+The Architect doesn't just "see" what you paste; it understands your entire project. Using **ChromaDB**, it indexes your `.py`, `.md`, and `.sh` files. When you ask a question, it automatically retrieves the 2 most relevant code blocks and injects them into its reasoning engine.
+*   **Manual Update:** Run `/reindex` whenever you make major changes.
 
-VRAM Allocation: Set to 8GB (or "Auto" if using the latest BIOS update) to ensure Ollama has enough memory to load the 7B model entirely on the GPU.
+### 🤖 Autonomous Build Loop
+The `/build` command triggers a reasoning loop where the agent:
+1.  Analyzes your objective.
+2.  Writes Python code to perform a step.
+3.  Executes the code in the `/workspace` directory.
+4.  Inspects the output (and self-heals if it fails).
+5.  Repeats until **✅ MISSION COMPLETE**.
 
-CPU Power Limits (PL1/PL2): Ensure these are set to allow for the 28W-45W range to handle both the LLM and the WSL overhead.
+### 🎙️ Voice Interface
+Send a voice message to The Architect. It uses a local **Whisper** model (optimized for Intel XPU) to transcribe your speech and then processes the text as a standard command or query.
 
-2. MSI Center M Fixes
+---
 
-User Scenario: Set to Extreme Performance.
+## 📂 Project Structure
 
-GPU Overclock: Avoid aggressive core offsets; the IPEX runtime prefers stability for SYCL kernels.
+*   `coder_agent.py`: Main entry point and Telegram loop.
+*   `handlers.py`: Logic for all bot commands and message routing.
+*   `skill_manager.py`: Manages the sandbox and OpenClaw skill lifecycle.
+*   `memory_manager.py`: Neural Memory (RAG) implementation using ChromaDB.
+*   `voice_utils.py`: Local Whisper-based voice transcription.
+*   `hardware_config.py`: Intel XPU/IPEX initialization logic.
+*   `utils.py`: Mobile-optimized formatting and UI utilities.
+*   `setup_claw.sh`: Idempotent setup script for MSI Claw environments.
+*   `/workspace`: Persistent directory for all autonomous tasks and `/run` commands.
+*   `/skills`: Directory for modular, user-approved abilities.
 
-Cooler Boost: Recommended during long coding sessions or when installing heavy skills to keep the Core Ultra 7 in the boost clock range.
+---
 
-🔗 Essential Resources & Downloads
+## 🔒 Security & Privacy
+*   **Local-First:** All inference (Ollama) and transcription (Whisper) happens on your MSI Claw.
+*   **Sandbox:** Python code is executed in a subprocess within a dedicated workspace.
+*   **Secret Scanning:** Integrated **TruffleHog** scanning via `scripts/pre-push` to prevent accidental token leaks.
+*   **Audit Loop:** Every skill installation requires manual SysOp approval and triggers an AI safety audit.
 
-To achieve the hardware acceleration described above, you must use the Intel-specific builds of these tools:
-
-Intel-Optimized Ollama (IPEX): Download from Intel's official GitHub
-
-Intel® oneAPI Base Toolkit: Download here
-
-Intel Arc Graphics Drivers: Ensure you are on the latest "Game On" drivers.
-
-🚀 Key Features
-
-Intel Arc Optimized: Custom Windows-to-WSL bridge ensures the LLM runs on the GPU, not the CPU.
-
-Secure Subprocess Sandbox: Executes generated Python code in isolated temporary directories.
-
-OpenClaw Skill Manager: A modular system to install, audit, and run skills via Telegram.
-
-Claw HUD: A BBS-style ASCII telemetry dashboard for real-time hardware monitoring.
-
-Self-Healing Loop: Automatically monitors execution errors and writes its own hotfixes.
-
-Neural Memory (RAG): Persistent local codebase context using ChromaDB and Intel-optimized embeddings.
-
-Voice-to-Code: Local transcription via Whisper XPU for hands-free coding operations.
-
-Persistent Workspace: Dedicated `/workspace` directory for autonomous task state and persistence.
-
-📂 Project Structure
-
-coder_agent.py: The core asynchronous Telegram bot and logic engine.
-
-launch_architect.bat: The "Special Sauce" launcher for MSI Claw hardware.
-
-requirements.txt: Python dependencies.
-
-/skills: A persistent directory for your Architect's learned abilities.
-
-memory_manager.py: The Neural Memory (RAG) engine.
-
-voice_utils.py: Local Whisper-based Voice-to-Code interface.
-
-chroma_db/: (Hidden/Ignored) The local vector database.
-
-workspace/: (Hidden/Ignored) Persistent directory for autonomous build tasks.
-
-.env: (Hidden) Stores your private bot token.
+---
+*Built for the 90s BBS hacker in all of us. Stay elite.*
