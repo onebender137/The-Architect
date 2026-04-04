@@ -34,7 +34,8 @@ timeout /t 10 /nobreak >nul
 :: ============================================================
 echo [3/3] Launching Architect in WSL...
 
-:: This command enters WSL, activates the env, and runs the bot
-wsl bash -c "source ../tg_bot_env/bin/activate && cd ~/The-Architect && python3 coder_agent.py"
+:: Convert current Windows path to WSL path and launch
+:: Assumes setup_claw.sh was run (env at ~/tg_bot_env)
+wsl bash -c "export WSL_PATH=$(wslpath '%~dp0') && source ~/tg_bot_env/bin/activate && cd \"$WSL_PATH\" && python3 coder_agent.py"
 
 pause
