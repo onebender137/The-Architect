@@ -58,7 +58,8 @@ class SkillManager:
         return True, slug
 
     @staticmethod
-    def get_skill_command(slug: str) -> str | None:
+    def get_skill_command(slug: str) -> tuple[str, str] | None:
+        """Returns (interpreter, command) for the given skill slug."""
         path = os.path.join(SKILLS_DIR, slug, "SKILL.md")
         if not os.path.exists(path):
             return None
@@ -66,8 +67,17 @@ class SkillManager:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        match = re.search(r"```bash\n(.*?)\n```", content, re.DOTALL)
-        return match.group(1).strip() if match else None
+        # Try Bash first
+        bash_match = re.search(r"```bash\n(.*?)\n```", content, re.DOTALL)
+        if bash_match:
+            return "bash", bash_match.group(1).strip()
+
+        # Try Python next
+        python_match = re.search(r"```python\n(.*?)\n```", content, re.DOTALL)
+        if python_match:
+            return "python", python_match.group(1).strip()
+
+        return None
 
     @staticmethod
     def remove_skill(slug: str) -> bool:
