@@ -2,14 +2,21 @@
 
 **The Architect** is an elite, local-first coding assistant and OpenClaw skill manager specifically engineered for the **MSI Claw (Intel Core Ultra 7 155H)**.
 
-This project represents the **Syndicate Build (Phase 6)**, bridging the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development. It provides a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
+This project represents the **Syndicate Build (Phase 8)**, bridging the gap between Windows-based Intel Arc GPU acceleration and Linux-based WSL development. It provides a high-performance, low-latency coding mentor that runs entirely on your handheld hardware.
 
 ---
 
-## 🧠 Phase 6: The Neural Expansion (Latest Features)
+## 🧠 Phase 7 & 8: The Ghost in the Machine (Latest Features)
 
-The **Syndicate Build** introduces heavy-duty autonomous and contextual capabilities:
+The **Syndicate Build** has evolved into a multi-agent powerhouse:
 
+*   👥 **Syndicate Multi-Agent System:** Specialized personas (**Ghost, Pulse, Spark, Specter**) for targeted tasks via `/build_with`.
+*   🔌 **MCP Bridge:** Connect to any Model Context Protocol server via `/mcp_connect` and execute tools with `/mcp_call`.
+*   🔍 **Hybrid Search Memory:** Combines Vector Search (ChromaDB) and Keyword Search (BM25) for superior code retrieval.
+*   👁️ **Vision Audit 2.0 & Vision-to-Code:** Structured technical reports and code generation from images via `/vision_audit`.
+*   📚 **Codex Vault Bridge:** Direct access to local engineering knowledge via the `/codex` command.
+*   ⚡ **Core Ultra NPU Integration:** Ready for Intel NPU acceleration via OpenVINO GenAI for ultra-low-power inference.
+*   ⏳ **Thinking Process Visualization:** Real-time feedback for reasoning models like DeepSeek-R1.
 *   🧠 **Neural Memory (Local RAG):** Persistent codebase awareness using ChromaDB and `all-MiniLM-L6-v2`. Use `/reindex` to scan your project.
 *   🤖 **Autonomous Task Agent:** The `/build` loop allows The Architect to execute multi-turn coding tasks, self-heal from errors, and persist work in a dedicated `/workspace`.
 *   🎙️ **Voice-to-Code:** Local **OpenAI Whisper** integration (running on XPU) for hands-free coding and commanding via Telegram voice messages.
@@ -50,6 +57,13 @@ The Architect utilizes **Dolphin-Mistral 7B**, optimized for the Intel Xᵉ-LPG 
 | Command | Description |
 | :--- | :--- |
 | `/build [task]` | **Start Autonomous Build Loop** (5 iterations max) |
+| `/build_with [agent] [task]` | **Delegate to Syndicate Agent** (Ghost, Specter, etc.) |
+| `/syndicate` | **List Syndicate Agents** and their specializations |
+| `/mcp_connect [slug] [cmd]` | **Connect to MCP Server** via stdio |
+| `/mcp_list` | **List active MCP sessions** and tools |
+| `/mcp_call [slug] [tool] [args]`| **Execute MCP Tool** with JSON arguments |
+| `/vision_audit` | **Structured Technical Audit** of an attached image |
+| `/codex [query]` | **Search Engineering Vault** for local knowledge |
 | `/reindex` | **Refresh Neural Memory** (RAG) by scanning codebase |
 | `/run [code]` | Execute Python in a secure, persistent `/workspace` |
 | `/scan` | Generate a visual tree of the project structure |

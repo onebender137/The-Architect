@@ -771,9 +771,67 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             return  # Let command handlers take care of commands
         await process_message_text(message, message.text)
 
+    @dp.message(Command("vision_audit"))
+    async def cmd_vision_audit(message: types.Message):
+        photo = None
+        if message.photo:
+            photo = message.photo[-1]
+        elif message.reply_to_message and message.reply_to_message.photo:
+            photo = message.reply_to_message.photo[-1]
+
+        if not photo:
+            await message.answer("👁️ **Vision Audit 2.0**\nAttach an image or reply to one with this command to generate a structured technical report.")
+            return
+
+        await bot.send_chat_action(message.chat.id, "typing")
+        file_info = await bot.get_file(photo.file_id)
+        vlm_model = os.getenv("VLM_MODEL", "moondream")
+        status_msg = await message.answer(f"👁️ **Performing Technical Audit with `{vlm_model}`...**")
+
+        try:
+            file_buffer = await bot.download_file(file_info.file_path)
+            img_b64 = base64.b64encode(file_buffer.read()).decode()
+
+            audit_prompt = (
+                "Perform a high-depth technical audit of this image. Identify: \n"
+                "1. Hardware components or UI elements.\n"
+                "2. Potential vulnerabilities or optimization points.\n"
+                "3. Suggested code implementation for seen logic.\n"
+                "Format as a structured BBS-style report."
+            )
+
+            res = await ollama_client.generate(model=vlm_model, prompt=audit_prompt, images=[img_b64])
+            await status_msg.edit_text(format_output_for_mobile(f"👁️ **Vision Audit 2.0 Report:**\n\n{res['response']}"), parse_mode="Markdown")
+        except Exception as e:
+            await status_msg.edit_text(f"❌ Audit failed: {e}")
+
+    @dp.message(Command("codex"))
+    async def cmd_codex(message: types.Message, command: CommandObject):
+        if not command.args:
+            await message.answer("📚 **Codex Vault Bridge**\nUsage: `/codex [query]` to search local engineering knowledge.")
+            return
+
+        query = command.args.strip()
+        status_msg = await message.answer(f"🔍 **Searching Codex for `{query}`...**")
+        # Reuse RAG/Memory for the bridge
+        results = await memory_manager.search(query, n_results=1)
+        if results and results['documents']:
+            doc = results['documents'][0][0]
+            path = results['metadatas'][0][0].get('path', 'Codex Core')
+            await status_msg.edit_text(format_output_for_mobile(f"📚 **Codex Entry: {path}**\n\n{doc}"), parse_mode="Markdown")
+        else:
+            await status_msg.edit_text("❌ No relevant entries found in the Codex.")
+
     async def process_message_text(message: types.Message, text: str):
         history = get_context(message.from_user.id)
-        await bot.send_chat_action(message.chat.id, "typing")
+        status_msg = None
+
+        # Thinking Process Visualization (DeepSeek-R1)
+        if "deepseek-r1" in MODEL_NAME.lower():
+            status_msg = await message.answer("⏳ **The Architect is thinking...**")
+            await bot.send_chat_action(message.chat.id, "typing")
+        else:
+            await bot.send_chat_action(message.chat.id, "typing")
 
         # RAG: Search neural memory for context
         relevant_context = ""
@@ -805,7 +863,10 @@ def register_handlers(dp, bot, ollama_client, MODEL_NAME, device, user_history, 
             history.append({'role': 'user', 'content': text})
             history.append({'role': 'assistant', 'content': ans})
 
-            await message.answer(format_output_for_mobile(ans), parse_mode="Markdown")
+            if status_msg:
+                await status_msg.edit_text(format_output_for_mobile(ans), parse_mode="Markdown")
+            else:
+                await message.answer(format_output_for_mobile(ans), parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ollama error: {e}")
             await message.answer("⚠️ Ollama connection error. Make sure `ollama serve` is running.")

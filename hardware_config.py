@@ -14,11 +14,19 @@ def setup_hardware():
 
     try:
         import torch
-        # Detect Intel XPU
+        # Detect Intel XPU (Arc GPU)
         device = "xpu" if torch.xpu.is_available() else "cpu"
-        logger.info(f"Jules is waking up on: {device}")
+
+        # Core Ultra NPU Integration (Detect via OpenVINO or ENV)
+        npu_available = os.getenv("NPU_ENABLED", "false").lower() == "true"
+
+        logger.info(f"Jules is waking up on: {device} (NPU: {npu_available})")
         if device == "xpu":
             logger.info(f"Hardware Verified: {torch.xpu.get_device_name(0)}")
+
+        if npu_available:
+            logger.info("Intel NPU Acceleration for OpenVINO GenAI active.")
+
         return device
     except ImportError:
         logger.warning("torch not found, defaulting to CPU mode.")

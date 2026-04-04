@@ -9,8 +9,16 @@ The Architect is an elite, local-first coding assistant and OpenClaw skill manag
 - **OpenClaw Skill Management:** A modular system to install, audit, and run skills via Telegram.
 - **Self-Healing Loop:** Automatically monitors execution errors and writes its own hotfixes.
 - **Neural Memory (RAG):** Persistent local context from the codebase using ChromaDB and Intel-optimized embeddings.
+- **Syndicate Multi-Agent System:** Specialized personas (Ghost, Pulse, Spark, Specter) for targeted tasks.
+- **MCP Bridge:** standardized tool integration using Model Context Protocol.
 
 ## 📖 Documentation Sections
+
+### [👥 The Syndicate & Multi-Agent System](Syndicate-Multi-Agent-System)
+Learn about the specialized sub-agents and how to delegate complex tasks using `/build_with`.
+
+### [🔌 MCP Bridge Architecture](MCP-Bridge-Architecture)
+How to connect and call external tools using the Model Context Protocol (stdio).
 
 ### [🏎️ Hardware Tuning](Hardware-Tuning)
 Learn how to configure your MSI Claw BIOS, MSI Center M, and environment variables to achieve maximum inference speed (tokens per second) using Intel IPEX.
